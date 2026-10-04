@@ -114,7 +114,9 @@ kind: Service
 metadata:
   name: searxng
   namespace: ai-system
-  labels: {app: searxng, app.kubernetes.io/part-of: lif}
+  # No /metrics (and only the gateway may connect): opt out of the lif-services ServiceMonitor, or
+  # Prometheus reports it as a down target. Its health shows as LIFWebSearchFailing (14-monitoring.yaml).
+  labels: {app: searxng, app.kubernetes.io/part-of: lif, lif.dev/metrics: "false"}
 spec:
   selector: {app: searxng}
   ports:

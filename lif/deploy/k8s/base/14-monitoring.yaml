@@ -2,7 +2,9 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata: {name: lif-services, namespace: ai-system, labels: {app.kubernetes.io/part-of: lif}}
 spec:
-  selector: {matchLabels: {app.kubernetes.io/part-of: lif}}
+  selector:
+    matchLabels: {app.kubernetes.io/part-of: lif}
+    matchExpressions: [{key: lif.dev/metrics, operator: NotIn, values: ["false"]}]   # services without /metrics
   endpoints: [{port: http, path: /metrics, interval: 30s}]
 ---
 apiVersion: monitoring.coreos.com/v1
@@ -44,6 +46,15 @@ spec:
           for: 10m
           labels: {severity: warning}
           annotations: {summary: "Host MemAvailable below gpusched's 8 GiB headroom — check LIF CPU tiers (anon memory)."}
+        # Live lookups (docs/WEB_GROUNDING.md). SearXNG has no /metrics; its health is how lookups fare.
+        - alert: LIFWebSearchFailing
+          expr: |
+            sum(increase(lif_web_lookups_total{status="error"}[15m])) >= 3
+            and sum(increase(lif_web_lookups_total{status="error"}[15m]))
+              > 0.5 * sum(increase(lif_web_lookups_total{status=~"ok|empty|error"}[15m]))
+          for: 5m
+          labels: {severity: warning}
+          annotations: {summary: "Most live web lookups are failing (SearXNG or its engines). Answers say they couldn't confirm recent facts. Check kubectl -n ai-system logs deploy/searxng."}
     # ── Chat speed (docs/GPU_SCHEDULING.md → The cgroup-fit lesson) ──
     - name: lif-serving
       rules:
