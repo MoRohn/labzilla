@@ -232,7 +232,11 @@ def resolve_dates(text: str, now: datetime) -> Resolved:
             d = today + timedelta(days=target_wd - wd)
         else:                            # "on Saturday", "Saturday's game", "last Saturday": the most recent one
             back = (wd - target_wd) % 7
-            d = today - timedelta(days=back if back or mod != "last" else 7)
+            # Today's own weekday counts only for present/future questions ("who plays on Sunday?"); a past-tense
+            # one asked on that day ("did they win on Sunday?" on Sunday morning) means the week before.
+            if back == 0 and (mod == "last" or _PAST.search(out.text)):
+                back = 7
+            d = today - timedelta(days=back)
         out.text = out.text[:m.start()] + _fmt(d) + out.text[m.end():]
         out.target = out.target or d
     if re.search(r"(?i)\b(?:this|last) (?:week|month|year|season)\b", out.text) and out.target is None:
@@ -247,6 +251,7 @@ def resolve_dates(text: str, now: datetime) -> Resolved:
 _FILLER = re.compile(r"(?i)^\s*(?:hey|hi|ok(?:ay)?|so|please|quick question[:,]?|"
                      r"(?:can|could|would) you (?:please )?(?:tell me|let me know|find out|look up|check|search)(?: for)?|"
                      r"do you know|i(?:'d| would) like to know|i want to know|tell me|look up|search(?: for)?|find out)\b[\s,:]*")
+_PAST = re.compile(r"(?i)\b(?:did|was|were|won|lost|beat|happened|went|scored|played|finished|how did)\b")
 _FOLLOWUP = re.compile(r"(?i)^\s*(?:and|what about|how about|and what about|what of|also|same for)\b|\b(?:it|they|them|he|she"
                        r"|that|those|this one|their|his|her)\b")
 _MAX_QUERY = 200

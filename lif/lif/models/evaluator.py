@@ -207,9 +207,17 @@ async def _one(client: httpx.AsyncClient, url: str, model: str, prompt: str | li
 
 
 async def _ask(client: httpx.AsyncClient, url: str, model: str, item: dict, max_tokens: int, extra: dict) -> dict:
-    if item.get("grounded"):
-        return await _one(client, url, model, None, max_tokens, extra, messages=item_messages(item))
-    return await _one(client, url, model, item_content(item), max_tokens, extra)
+    """One item. A connection the server already closed (keep-alive reuse, e.g. through a port-forward) fails
+    before any output, so it is retried once rather than scored as a wrong answer."""
+    for attempt in (1, 2):
+        try:
+            if item.get("grounded"):
+                return await _one(client, url, model, None, max_tokens, extra, messages=item_messages(item))
+            return await _one(client, url, model, item_content(item), max_tokens, extra)
+        except httpx.RemoteProtocolError:
+            if attempt == 2:
+                raise
+    raise AssertionError("unreachable")
 
 
 async def run_suite(url: str, *, model: str = "eval", suite: str = "core", max_tokens: int = 256,

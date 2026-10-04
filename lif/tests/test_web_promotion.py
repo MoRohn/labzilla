@@ -230,3 +230,18 @@ async def test_memory_guard_sheds_local_web_first_and_restores_with_room(tmp_pat
     assert (dep, 1) not in k8s.scaled
     await tick(10_240 + budget + 2_000)
     assert k8s.scaled[-1] == (dep, 1)
+
+
+async def test_evaluator_retries_a_dropped_keepalive_connection(monkeypatch):
+    import httpx as _httpx
+    calls = []
+
+    async def flaky(client, url, model, prompt, max_tokens, extra, messages=None):
+        calls.append(1)
+        if len(calls) == 1:
+            raise _httpx.RemoteProtocolError("Server disconnected without sending a response.")
+        return {"text": "The Seattle Seahawks won [1].", "ttft": 0.1, "total": 0.2, "decode_tps": 20.0, "usage": {}}
+    monkeypatch.setattr(evaluator, "_one", flaky)
+    out = await evaluator._ask(None, "http://x", "m", {"prompt": "q", "grounded": {"now": "2026-10-03T09:00",
+                                                                                 "evidence": []}}, 64, {})
+    assert out["text"].startswith("The Seattle") and len(calls) == 2

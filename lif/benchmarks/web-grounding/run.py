@@ -105,9 +105,11 @@ async def main() -> None:
                 # As the gateway sends it (profile chat_template_kwargs): Qwen3 hybrids without a thinking pass;
                 # other templates via ARM_KWARGS='{"gpt-oss-20b": {"reasoning_effort": "low"}}'.
                 kw = arm_kwargs().get(name, {"enable_thinking": False})
-                r = await http.post(f"{url}/v1/chat/completions", json={"messages": msgs, "max_tokens": 512,
-                                                                        "temperature": 0.2,
-                                                                        "chat_template_kwargs": kw})
+                body = {"messages": msgs, "max_tokens": 512, "temperature": 0.2, "chat_template_kwargs": kw}
+                try:
+                    r = await http.post(f"{url}/v1/chat/completions", json=body)
+                except httpx.RemoteProtocolError:      # a kept-alive connection the port-forward already closed
+                    r = await http.post(f"{url}/v1/chat/completions", json=body)
                 ms = (time.perf_counter() - t) * 1000
                 d = r.json()
                 text = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""

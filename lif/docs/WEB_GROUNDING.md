@@ -110,12 +110,33 @@ Remove SearXNG: `kubectl delete -f deploy/k8s/base/17-searxng.yaml`. With it gon
 
 ## Measured
 
-Grounded-QA benchmark: `benchmarks/web-grounding/` (19 questions, facts checked 2026-10-03; results in `results-*.json`).
+Grounded-QA benchmark: `benchmarks/web-grounding/`. The same evidence goes to every model. Run 2026-10-04 09:08–09:23 ET, production MODERATE, all residents loaded.
 
-| What (2026-10-03, production state HIGH, all residents loaded) | n | Result |
-|---|---|---|
-| Lookup time (feeds + SearXNG), dry run before the classifier fixes | 13 | 0.34–1.52 s |
-| Lookups whose evidence held the expected fact | 13 | 13 |
-| Screenshot question end to end through the gateway (4B, streaming) | 1 | 6.1 s total, 0.49 s lookup, correct with 2 cited sources |
+**`web` suite** (`evals/web.yaml`, 15 items with fixed evidence; `websuite-20261004-0923.json`), n = 15 per model:
 
-Model accuracy and latency per arm come from the benchmark run, which waits until the primary workload is LOW or MODERATE.
+| Model | Passed | p50 answer | p50 first token | Decode |
+|---|---|---|---|---|
+| Qwen3-4B (local/default today) | 15/15 | 4.8 s | 1.7 s | 20.9 tok/s |
+| Qwen3.5-9B (candidate) | 14/15¹ | 8.1 s | 3.3 s | 10.8 tok/s |
+| Qwen3-1.7B (local/instant) | 7/15 | 1.6 s | 0.5 s | 38.7 tok/s |
+
+¹ Failed only the injection item, by saying "I ignored the unrelated instruction". Suite v2 no longer counts that as a failure, so on v2 both models are 15/15.
+
+**Live questions** (`questions-20261003.json`, 17 live and 2 controls; `results-20261004-0918.json`), n = 19 per model:
+
+| | Qwen3-4B | Qwen3.5-9B | Qwen3-1.7B |
+|---|---|---|---|
+| Expected fact (facts as of 2026-10-03) | 15/19 | 15/19 | 15/19 |
+| Cited sources (live rows) | 17/17 | 17/17 | 5/17 |
+| Cutoff disclaimer or hedging | 0 | 0 | 0 |
+| Median / p90 answer | 6.4 / 7.8 s | 10.8 / 13.9 s | 2.2 / 3.5 s |
+
+| Other measurements | Value |
+|---|---|
+| Classifier (live / not live) | 19/19 |
+| Lookup time, median / max | 0.76 / 1.91 s |
+| Qwen3.5-9B resident memory | 5.6–6.3 GiB; MemAvailable 20.9 → 15.9 GiB while loaded |
+
+The four "misses" per model are the date-anchored questions ("last night", "their last game"). They were answered correctly with games played on Oct 3, after the expected facts were written. One of them, "Did the Steelers win on Sunday?" asked on a Sunday, exposed a date bug: it resolved to today. Fixed 2026-10-04: a past-tense question on the same weekday means last week.
+
+**Verdict (2026-10-04):** Qwen3.5-9B gives no measurable gain over the 4B on grounded answers, at 1.7–1.9× the latency. The `local/web` policy needs a gain of at least 0.05, so it is not promoted. Grounded answers stay on the 4B, through the `local/default` fallback. The 1.7B cites poorly (5/17), which confirms that grounded answers never go to `local/instant`. Retrieval quality, not model size, decides these answers. Revisit with a model that reads sources better at the 4B's speed.

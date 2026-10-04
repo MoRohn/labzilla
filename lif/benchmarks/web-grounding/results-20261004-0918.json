@@ -1,0 +1,1564 @@
+{
+ "date": "2026-10-04 09:18",
+ "questions": "questions-20261003.json",
+ "arms": {
+  "qwen3.5-9b": "http://localhost:18083",
+  "qwen3-4b": "http://localhost:18080",
+  "qwen3-1.7b": "http://localhost:18081"
+ },
+ "classifier_correct": 19,
+ "n": 19,
+ "lookup_ms_median": 756,
+ "lookup_ms_max": 1905,
+ "summary": {
+  "qwen3.5-9b": {
+   "n": 19,
+   "fact": 15,
+   "cite_live": 17,
+   "clean": 19,
+   "n_live": 17,
+   "median_ms": 10800,
+   "p90_ms": 13944
+  },
+  "qwen3-4b": {
+   "n": 19,
+   "fact": 15,
+   "cite_live": 17,
+   "clean": 19,
+   "n_live": 17,
+   "median_ms": 6399,
+   "p90_ms": 7831
+  },
+  "qwen3-1.7b": {
+   "n": 19,
+   "fact": 15,
+   "cite_live": 5,
+   "clean": 19,
+   "n_live": 17,
+   "median_ms": 2234,
+   "p90_ms": 3475
+  }
+ },
+ "rows": [
+  {
+   "q": "Who won the Panthers college football game last night?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Who won the Panthers college football game October 3, 2026",
+    "kind": "sports",
+    "providers": [
+     "espn",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "ESPN: Old Dominion Monarchs at Georgia State Panthers",
+      "url": "https://www.espn.com/college-football/game/_/gameId/401869956/old-dominion-georgia-st"
+     },
+     {
+      "n": 2,
+      "title": "Pitt Panthers Dominates Bucknell 59-0: Game Highlights",
+      "url": "https://westhillsgazette.com/panthers-meet-little-resistance-in-record-setting-win-over-bucknell/"
+     },
+     {
+      "n": 3,
+      "title": "Old Dominion Monarchs vs Georgia State Panthers Prediction, 10/3/2026 College Football Picks, Best Bets & Odds",
+      "url": "https://www.docsports.com/free-picks/football/2026/old-dominion-monarchs-vs-georgia-state-panthers-prediction-10-3-2026-college-football-picks-best-bets-odds.html"
+     }
+    ],
+    "ms": 1059.4,
+    "note": null,
+    "timings": {
+     "espn": 367.6,
+     "search": 1051.2
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The Georgia State Panthers won their game last night, defeating the Old Dominion Monarchs 42-10 [1]. This victory occurred on Saturday, October 3, 2026, in a match where the Panthers dominated the Monarchs [3].",
+     "ms": 9860,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 516,
+     "completion_tokens": 55,
+     "cached_tokens": 0,
+     "prompt_ms": 4830,
+     "decode_tps": 10.8
+    },
+    "qwen3-4b": {
+     "answer": "The Georgia State Panthers won their college football game last night, defeating the Old Dominion Monarchs 42-10 [1]. This game took place on Saturday, October 3, 2026 [1]. There is no mention of a Panthers game against Bucknell on October 1, 2026, in the provided results [2].",
+     "ms": 6360,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 506,
+     "completion_tokens": 76,
+     "cached_tokens": 5,
+     "prompt_ms": 2642,
+     "decode_tps": 20.2
+    },
+    "qwen3-1.7b": {
+     "answer": "The Panthers college football game last night, which was played on October 3, 2026, was won by Georgia State Panthers. The result is shown in [1], where it states that Georgia State Panthers won 42-10 against Old Dominion Monarchs.",
+     "ms": 2444,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 510,
+     "completion_tokens": 58,
+     "cached_tokens": 1,
+     "prompt_ms": 801,
+     "decode_tps": 35.1
+    }
+   }
+  },
+  {
+   "q": "Did the Steelers win on Sunday?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Did the Steelers win October 4, 2026",
+    "kind": "sports",
+    "providers": [
+     "espn",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "ESPN: Pittsburgh Steelers at Cleveland Browns",
+      "url": "https://www.espn.com/nfl/game/_/gameId/401872964/steelers-browns"
+     },
+     {
+      "n": 2,
+      "title": "ESPN: Indianapolis Colts at Pittsburgh Steelers",
+      "url": "https://www.espn.com/nfl/game/_/gameId/401872985/colts-steelers"
+     },
+     {
+      "n": 3,
+      "title": "Pittsburgh Steelers vs. Cleveland Browns: Oct 1, 2026 - FOX Sports",
+      "url": "https://www.foxsports.com/nfl/week-4-pittsburgh-steelers-vs-cleveland-browns-oct-01-2026-game-boxscore-11210"
+     }
+    ],
+    "ms": 706.6,
+    "note": null,
+    "timings": {
+     "search": 629.1,
+     "espn": 705.0
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "No, the Steelers did not win on Sunday; they lost to the Cleveland Browns 24-27 in the game played on October 1, 2026 [1]. The most recent scheduled game for the Steelers is actually next Sunday against the Indianapolis Colts [2].",
+     "ms": 9593,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 529,
+     "completion_tokens": 59,
+     "cached_tokens": 76,
+     "prompt_ms": 4121,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "No, the Steelers did not win on Sunday. The Cleveland Browns defeated the Pittsburgh Steelers 27-24 on Thursday, October 1, 2026 [1]. There is no record of a game between the teams on Sunday, October 4, 2026.",
+     "ms": 5298,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 517,
+     "completion_tokens": 62,
+     "cached_tokens": 112,
+     "prompt_ms": 2261,
+     "decode_tps": 20.2
+    },
+    "qwen3-1.7b": {
+     "answer": "The Pittsburgh Steelers won on Sunday, October 1, 2026, in the NFL game against the Cleveland Browns. [1] \n\nThe game was played on a Sunday, and the Steelers secured a 24-27 victory over the Browns. [1]",
+     "ms": 2234,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 521,
+     "completion_tokens": 58,
+     "cached_tokens": 112,
+     "prompt_ms": 702,
+     "decode_tps": 37.6
+    }
+   }
+  },
+  {
+   "q": "Did LSU win their last football game?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Did LSU win their last football game 2026",
+    "kind": "sports",
+    "providers": [
+     "espn",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "ESPN: McNeese Cowboys at LSU Tigers",
+      "url": "https://www.espn.com/college-football/game/_/gameId/401856706/mcneese-lsu"
+     },
+     {
+      "n": 2,
+      "title": "ESPN: LSU Tigers at Kentucky Wildcats",
+      "url": "https://www.espn.com/college-football/game/_/gameId/401856715/lsu-kentucky"
+     },
+     {
+      "n": 3,
+      "title": "Ole Miss gets cathartic win vs. Lane Kiffin, LSU - The New York Times",
+      "url": "https://www.nytimes.com/athletic/7611608/2026/09/19/lsu-ole-miss-lane-kiffin-score-results/"
+     },
+     {
+      "n": 4,
+      "title": "2026 LSU Fighting Tigers Schedule and Results | College Football at ...",
+      "url": "https://www.sports-reference.com/cfb/schools/louisiana-state/2026-schedule.html"
+     }
+    ],
+    "ms": 756.3,
+    "note": null,
+    "timings": {
+     "espn": 424.8,
+     "search": 753.5
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "Yes, LSU won their last football game, defeating McNeese 63-14 on Saturday, October 3, 2026 [1]. The Tigers secured a decisive victory in that matchup, which was their most recent completed contest.",
+     "ms": 9391,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 567,
+     "completion_tokens": 53,
+     "cached_tokens": 76,
+     "prompt_ms": 4483,
+     "decode_tps": 10.8
+    },
+    "qwen3-4b": {
+     "answer": "Yes, LSU won their last football game, defeating McNeese Cowboys 63–14 on Saturday, October 3, 2026 [1]. The game took place at LSU and was part of their 2026 schedule [4].",
+     "ms": 5379,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 556,
+     "completion_tokens": 56,
+     "cached_tokens": 112,
+     "prompt_ms": 2505,
+     "decode_tps": 19.4
+    },
+    "qwen3-1.7b": {
+     "answer": "LSU won their last football game. [1] The LSU Tigers defeated the McNeese Cowboys 14-63 in a college football game on October 3, 2026.",
+     "ms": 1925,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 560,
+     "completion_tokens": 43,
+     "cached_tokens": 112,
+     "prompt_ms": 779,
+     "decode_tps": 37.7
+    }
+   }
+  },
+  {
+   "q": "How did Oregon State do in their last game?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "How did Oregon State do in their last game 2026",
+    "kind": "sports",
+    "providers": [
+     "espn",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "ESPN: Oregon State Beavers at Colorado State Rams",
+      "url": "https://www.espn.com/college-football/game/_/gameId/401860899/oregon-st-colorado-st"
+     },
+     {
+      "n": 2,
+      "title": "ESPN: San Diego State Aztecs at Oregon State Beavers",
+      "url": "https://www.espn.com/college-football/game/_/gameId/401860902/san-diego-st-oregon-st"
+     },
+     {
+      "n": 3,
+      "title": "Oregon State 56-26 Colorado State (Oct 3, 2026) Game Recap - ESPN",
+      "url": "https://www.espn.com/college-football/recap/_/gameId/401860899"
+     }
+    ],
+    "ms": 1904.3,
+    "note": null,
+    "timings": {
+     "espn": 287.0,
+     "search": 1901.6
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "Oregon State won their last game against Colorado State with a final score of 56-26 [1]. The Beavers secured a decisive victory in the match played on Saturday, October 3, 2026 [2].",
+     "ms": 9076,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 558,
+     "completion_tokens": 50,
+     "cached_tokens": 76,
+     "prompt_ms": 4420,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "Oregon State won their last game 56-26 against Colorado State on Saturday, October 3, 2026 [1]. The game took place at Colorado State Rams, and the Beavers dominated the Rams with a strong performance.",
+     "ms": 5160,
+     "fact": false,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 546,
+     "completion_tokens": 52,
+     "cached_tokens": 87,
+     "prompt_ms": 2586,
+     "decode_tps": 20.1
+    },
+    "qwen3-1.7b": {
+     "answer": "Oregon State Beavers won their last game, defeating Colorado State Rams 56-26 on October 3, 2026. The game was broadcast on ESPN, and the result is confirmed in the provided information.",
+     "ms": 2037,
+     "fact": false,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 550,
+     "completion_tokens": 48,
+     "cached_tokens": 87,
+     "prompt_ms": 788,
+     "decode_tps": 38.0
+    }
+   }
+  },
+  {
+   "q": "Who won the Super Bowl this year?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Who won the Super Bowl 2026",
+    "kind": "sports",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Who Won the 2026 Super Bowl? Seahawks or Patriots in Super Bowl LX - NBC",
+      "url": "https://www.nbc.com/nbc-insider/who-won-the-2026-super-bowl-seahawks-or-patriots-in-super-bowl-lx"
+     },
+     {
+      "n": 2,
+      "title": "Who won Super Bowl 2026? What was Seahawks-Patriots Super Bowl LX score ...",
+      "url": "https://www.courier-journal.com/story/sports/nfl/2026/02/08/seahawks-patriots-channel-tonight-live-nfl-super-bowl-game-today-time-streaming-watch-football-score/88577818007/"
+     },
+     {
+      "n": 3,
+      "title": "Super Bowl LX - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Super_Bowl_LX"
+     },
+     {
+      "n": 4,
+      "title": "Who won Super Bowl LX in 2026? See highlights, reactions",
+      "url": "https://sports.yahoo.com/articles/won-super-bowl-lx-2026-032345734.html"
+     },
+     {
+      "n": 5,
+      "title": "Remember when the Seattle Seahawks won Super Bowl LX? - Reddit",
+      "url": "https://www.reddit.com/r/Seahawks/comments/1untla7/remember_when_the_seattle_seahawks_won_super_bowl/"
+     },
+     {
+      "n": 6,
+      "title": "Who Won the Super Bowl in 2026? Seattle Seahawks Beat Patriots to Win ...",
+      "url": "https://thesportscast.net/2026/09/10/who-won-the-super-bowl-in-2026-seattle-seahawks-beat-patriots-to-win-super-bowl-lx/"
+     }
+    ],
+    "ms": 1905.3,
+    "note": null,
+    "timings": {
+     "espn": 1.5,
+     "search": 1902.9
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The Seattle Seahawks won the 2026 Super Bowl, defeating the New England Patriots 29-13 in Super Bowl LX [1][6]. This victory marked their second championship in franchise history, taking place on February 8, 2026, at Levi's Stadium [3].",
+     "ms": 12400,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 756,
+     "completion_tokens": 64,
+     "cached_tokens": 76,
+     "prompt_ms": 6405,
+     "decode_tps": 10.6
+    },
+    "qwen3-4b": {
+     "answer": "The Seattle Seahawks won the Super Bowl in 2026, defeating the New England Patriots 29-13 in Super Bowl LX on February 8, 2026 [1][6]. The game was held at Levi's Stadium in Santa Clara, California [3].",
+     "ms": 6994,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 743,
+     "completion_tokens": 61,
+     "cached_tokens": 110,
+     "prompt_ms": 3858,
+     "decode_tps": 19.2
+    },
+    "qwen3-1.7b": {
+     "answer": "The Seattle Seahawks won the 2026 Super Bowl, defeating the New England Patriots 29-13. This result is confirmed by multiple sources, including NBC and Wikipedia, which state that the game took place on February 8, 2026, at Levi's Stadium.",
+     "ms": 2946,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 747,
+     "completion_tokens": 62,
+     "cached_tokens": 110,
+     "prompt_ms": 1224,
+     "decode_tps": 35.9
+    }
+   }
+  },
+  {
+   "q": "Who won the World Cup this summer?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Who won the World Cup this summer 2026",
+    "kind": "sports",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Spain defeats Argentina to win World Cup championship - NPR",
+      "url": "https://www.npr.org/2026/07/19/nx-s1-5899071/2026-world-cup-fifa-argentina-spain-final-championship"
+     },
+     {
+      "n": 2,
+      "title": "Spain's persistence pays off to win 2026 World Cup as Messi ...",
+      "url": "https://www.espn.com/soccer/story/_/id/49402253/world-cup-spain-win-lionel-messi-argentina-reaction-analysis-ferran-torres"
+     },
+     {
+      "n": 3,
+      "title": "Who won World Cup 2026? Spain wins second championship with ... - MSN",
+      "url": "https://www.msn.com/en-us/sports/soccer/who-won-world-cup-2026-spain-wins-second-championship-with-defeat-of-argentina/ar-AA28eJV9"
+     },
+     {
+      "n": 4,
+      "title": "Who won the last World Cup? | Britannica",
+      "url": "https://www.britannica.com/question/Who-won-the-last-World-Cup"
+     },
+     {
+      "n": 5,
+      "title": "Who were the 2026 World Cup winners and losers?",
+      "url": "https://impact.ed.ac.uk/opinion/who-were-the-2026-world-cup-winners-and-losers/"
+     },
+     {
+      "n": 6,
+      "title": "2026 FIFA World Cup Scores & Results | FOX Sports",
+      "url": "https://www.foxsports.com/soccer/fifa-world-cup/scores"
+     }
+    ],
+    "ms": 987.4,
+    "note": null,
+    "timings": {
+     "espn": 35.9,
+     "search": 986.4
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "Spain won the 2026 World Cup, defeating Argentina 1–0 after extra time [1][3]. The victory marked Spain's second championship title, with Ferran Torr scoring the decisive goal [4].",
+     "ms": 10340,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 719,
+     "completion_tokens": 46,
+     "cached_tokens": 76,
+     "prompt_ms": 6027,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "Spain won the World Cup this summer, defeating Argentina 1–0 after extra time [3]. The match took place on July 19, 2026, marking Spain's second World Cup championship [2].",
+     "ms": 6074,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 706,
+     "completion_tokens": 47,
+     "cached_tokens": 110,
+     "prompt_ms": 3597,
+     "decode_tps": 18.8
+    },
+    "qwen3-1.7b": {
+     "answer": "Spain won the 2026 World Cup. [1] [3] [4] The final was a 1-0 victory over Argentina, with Spain outshooting their opponents 20-3 and not allowing a shot on target in regular time or extra time.",
+     "ms": 2746,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 710,
+     "completion_tokens": 59,
+     "cached_tokens": 110,
+     "prompt_ms": 1131,
+     "decode_tps": 36.5
+    }
+   }
+  },
+  {
+   "q": "Who won the F1 race last weekend?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Who won the F1 race weekend of September 26, 2026",
+    "kind": "sports",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "2026 Qatar Airways Azerbaijan Grand Prix F1 Final Results - ESPN",
+      "url": "https://www.espn.com/f1/race/_/id/600057444"
+     },
+     {
+      "n": 2,
+      "title": "F1 Results 2026: Russell Wins Azerbaijan Grand Prix | Grid Guy",
+      "url": "https://www.gridguy.racing/f1-results/2026"
+     },
+     {
+      "n": 3,
+      "title": "How George Russell beat Max Verstappen to 2026 F1 Azerbaijan ...",
+      "url": "https://www.nytimes.com/athletic/live-blogs/f1-azerbaijan-live-updates-race-results/hKs9rgYyAAMi/b5boSICDuCf1/"
+     },
+     {
+      "n": 4,
+      "title": "Russell fends off Verstappen to win Azerbaijan Grand Prix, Antonelli ...",
+      "url": "https://www.reuters.com/sports/formula1/russell-wins-azerbaijan-gp-cut-antonellis-title-lead-2026-09-26/"
+     },
+     {
+      "n": 5,
+      "title": "2026 Azerbaijan Grand Prix: F1 Results, Winner & Podium",
+      "url": "https://www.f1-fansite.com/f1-calendar/azerbaijan-grand-prix-f1-race-information/"
+     },
+     {
+      "n": 6,
+      "title": "Race day at the 2026 Azerbaijan Grand Prix - Formula 1",
+      "url": "https://www.formula1.com/en/latest/article/what-the-teams-said-race-day-in-azerbaijan-2026.7FI05LpHsKH1PaUiI8SyVF"
+     }
+    ],
+    "ms": 710.3,
+    "note": null,
+    "timings": {
+     "espn": 64.5,
+     "search": 707.9
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "George Russell won the F1 race last weekend, taking the 2026 Azerbaijan Grand Prix for Mercedes [1][2]. He beat Max Verstappen by just 0.196 seconds after dominating from pole position [3].",
+     "ms": 10968,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 743,
+     "completion_tokens": 50,
+     "cached_tokens": 76,
+     "prompt_ms": 6264,
+     "decode_tps": 10.6
+    },
+    "qwen3-4b": {
+     "answer": "George Russell won the F1 race last weekend at the 2026 Azerbaijan Grand Prix. He secured the victory on September 26, 2026, by just 0.196 seconds over Max Verstappen, dominating the race from pole position [3]. This result is confirmed across multiple sources, including ESPN and Formula 1 official reports [1][5].",
+     "ms": 8171,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 733,
+     "completion_tokens": 82,
+     "cached_tokens": 87,
+     "prompt_ms": 3925,
+     "decode_tps": 19.2
+    },
+    "qwen3-1.7b": {
+     "answer": "George Russell of Mercedes won the F1 race last weekend, the 2026 Azerbaijan Grand Prix, on September 26, 2026. He defeated Max Verstappen by just 0.196 seconds.",
+     "ms": 2641,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 737,
+     "completion_tokens": 51,
+     "cached_tokens": 87,
+     "prompt_ms": 1227,
+     "decode_tps": 35.8
+    }
+   }
+  },
+  {
+   "q": "Who has the best record in the NFL?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Who has the best record in the NFL 2026",
+    "kind": "sports",
+    "providers": [
+     "espn",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "ESPN: NFL standings",
+      "url": "https://www.espn.com/nfl/standings"
+     },
+     {
+      "n": 2,
+      "title": "Which NFL Team Had The Best Record From 2024 To 2026",
+      "url": "https://www.statmuse.com/nfl/ask/which-nfl-team-had-the-best-record-from-2024-to-2026"
+     },
+     {
+      "n": 3,
+      "title": "Who is your NFL team and what do you see as your teams best and ...",
+      "url": "https://www.reddit.com/r/NFLv2/comments/1tjzodq/who_is_your_nfl_team_and_what_do_you_see_as_your/"
+     }
+    ],
+    "ms": 853.1,
+    "note": null,
+    "timings": {
+     "espn": 250.9,
+     "search": 850.4
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The San Francisco 49ers currently hold the best record in the NFL with a 3-0 start [1]. While the Buffalo Bills have the best cumulative record from 2024 to 2026 overall, the 49ers are leading the league this specific season.",
+     "ms": 10063,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 535,
+     "completion_tokens": 62,
+     "cached_tokens": 76,
+     "prompt_ms": 4262,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "As of October 4, 2026, the San Francisco 49ers, Kansas City Chiefs, Las Vegas Raiders, Minnesota Vikings, and Buffalo Bills all have a 3-0 record, tying for the best record in the NFL [1]. The exact team with the best record cannot be determined definitively from the provided standings, as multiple teams are tied at 3-0.",
+     "ms": 6438,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 525,
+     "completion_tokens": 83,
+     "cached_tokens": 110,
+     "prompt_ms": 2369,
+     "decode_tps": 20.2
+    },
+    "qwen3-1.7b": {
+     "answer": "According to the latest web results, the Buffalo Bills have the best record in the NFL with a 28-9 record as of October 4, 2026. The San Francisco 49ers are second with a 3-0 record.",
+     "ms": 2202,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 529,
+     "completion_tokens": 55,
+     "cached_tokens": 110,
+     "prompt_ms": 726,
+     "decode_tps": 37.4
+    }
+   }
+  },
+  {
+   "q": "Which college football team is ranked number one?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "sports",
+   "lookup": {
+    "status": "ok",
+    "query": "Which college football team is ranked number one 2026",
+    "kind": "sports",
+    "providers": [
+     "espn",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "ESPN: AP Top 25",
+      "url": "https://www.espn.com/college-football/rankings"
+     },
+     {
+      "n": 2,
+      "title": "College Football Rankings: Where All 138 FBS Teams Stand Ahead Of 2026 ...",
+      "url": "https://www.foxsports.com/stories/college-football/rankings-2026-preseason-138"
+     },
+     {
+      "n": 3,
+      "title": "All 138 FBS Teams Ranked: 2026 College Football Rankings",
+      "url": "https://statsassistance.com/college-football/"
+     }
+    ],
+    "ms": 744.4,
+    "note": null,
+    "timings": {
+     "espn": 241.1,
+     "search": 743.1
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "Texas is ranked number one in the 2026 AP Poll with a 4-0 record [1]. They lead the nation ahead of Georgia and Notre Dame, both of whom also sit at 4-0 [1].",
+     "ms": 9185,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 580,
+     "completion_tokens": 49,
+     "cached_tokens": 76,
+     "prompt_ms": 4620,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "Texas is ranked number one in the 2026 NCAA Football Rankings (AP Poll Week 5) [1]. The ranking reflects a 4-0 record for Texas, placing them at the top of the poll ahead of Georgia, Notre Dame, and Miami.",
+     "ms": 5611,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 569,
+     "completion_tokens": 56,
+     "cached_tokens": 87,
+     "prompt_ms": 2752,
+     "decode_tps": 19.4
+    },
+    "qwen3-1.7b": {
+     "answer": "According to the 2026 NCAA Football Rankings - AP Poll Week 5, Texas is ranked number one.",
+     "ms": 1499,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 573,
+     "completion_tokens": 25,
+     "cached_tokens": 87,
+     "prompt_ms": 846,
+     "decode_tps": 38.1
+    }
+   }
+  },
+  {
+   "q": "What did the Fed decide at its September meeting?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "news",
+   "lookup": {
+    "status": "ok",
+    "query": "What did the Fed decide at its September meeting 2026",
+    "kind": "news",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Fed Rate Decision September 2026: Benchmark Hiked to 3.75%-4.00%",
+      "url": "https://www.raisin.com/en-us/news/fed-rate-decision-policy-breakdown-september-2026/"
+     },
+     {
+      "n": 2,
+      "title": "Federal Reserve Meeting (September 2026): The Fed Raises Rates",
+      "url": "https://www.itrustcapital.com/learn/federal-reserve-meeting-september-2026-the-fed-raises-rates"
+     },
+     {
+      "n": 3,
+      "title": "September Fed Meeting: Updates and Commentary",
+      "url": "https://www.msn.com/en-us/news/other/september-fed-meeting-live-updates-and-commentary/ar-AA2cdVJl"
+     },
+     {
+      "n": 4,
+      "title": "September Fed Meeting: Updates and Commentary - Kiplinger",
+      "url": "https://www.kiplinger.com/investing/live/fed-meeting-updates-and-commentary-september-2026"
+     },
+     {
+      "n": 5,
+      "title": "Fed meeting recap: The FOMC made its first interest rate hike in 3 years",
+      "url": "https://www.businessinsider.com/fed-meeting-fomc-interest-rate-hike-live-updates-2026-9"
+     },
+     {
+      "n": 6,
+      "title": "Why the Fed may raise interest rates at its September meeting",
+      "url": "https://www.usatoday.com/story/money/economy/2026/09/14/federal-reserve-september-meeting-interest-rates/91655178007/"
+     }
+    ],
+    "ms": 714.2,
+    "note": null,
+    "timings": {
+     "search": 711.6
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The Federal Reserve raised the target range for the federal funds rate by 0.25 percentage points to 3.75%-4.00% at its September 15-16, 2026 meeting [2]. This marked the first interest rate hike in three years, with Chair Warsh confirming the decision included his views on GDP and inflation [5].",
+     "ms": 13222,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 686,
+     "completion_tokens": 80,
+     "cached_tokens": 76,
+     "prompt_ms": 5732,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "The Federal Reserve raised the target range for the federal funds rate by 0.25 percentage points to 3.75%-4.00% at its September 15-16, 2026 meeting [2]. This was the first interest rate hike in three years, driven by rising inflation [5].",
+     "ms": 6945,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 672,
+     "completion_tokens": 70,
+     "cached_tokens": 110,
+     "prompt_ms": 3356,
+     "decode_tps": 19.5
+    },
+    "qwen3-1.7b": {
+     "answer": "The Federal Reserve decided to raise the target range for the federal funds rate by 0.25 percentage points to 3.75%-4.00% at its September 15-16, 2026 meeting. This was the first interest rate hike in three years.",
+     "ms": 2783,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 676,
+     "completion_tokens": 63,
+     "cached_tokens": 110,
+     "prompt_ms": 1068,
+     "decode_tps": 36.7
+    }
+   }
+  },
+  {
+   "q": "What is bitcoin trading at today?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "finance",
+   "lookup": {
+    "status": "ok",
+    "query": "What is bitcoin trading at October 4, 2026",
+    "kind": "finance",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Bitcoin Price Prediction for October 2026 - Yahoo Finance",
+      "url": "https://finance.yahoo.com/markets/crypto/articles/bitcoin-price-prediction-october-2026-141555670.html"
+     },
+     {
+      "n": 2,
+      "title": "Bitcoin Price Analysis October 4, 2026: BTC Holds $84K as Buyers Eye $88K",
+      "url": "https://usethebitcoin.com/bitcoin/bitcoin-price-october-4-2026/"
+     },
+     {
+      "n": 3,
+      "title": "BTC.CM=: Bitcoin/USD Coin Metrics - Stock Price, Quote and News",
+      "url": "https://www.cnbc.com/quotes/BTC.CM="
+     },
+     {
+      "n": 4,
+      "title": "Bitcoin (BTC) News Today: Why BTC Is Up - 04 October 2026",
+      "url": "https://coinstats.app/ai/a/latest-news-for-bitcoin"
+     },
+     {
+      "n": 5,
+      "title": "What price will Bitcoin hit on October 4? Trading Odds & Predictions ...",
+      "url": "https://polymarket.com/event/what-price-will-bitcoin-hit-on-october-4-2026"
+     },
+     {
+      "n": 6,
+      "title": "Crypto Trading Insights: BTC Patterns October 2026 | Pickaxe",
+      "url": "https://www.pickaxe.io/resources/news/bitcoin-trading-patterns-unfold-on-october-4-2026"
+     }
+    ],
+    "ms": 715.1,
+    "note": null,
+    "timings": {
+     "search": 713.8
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "Bitcoin is currently trading around $84,700 to $84,893 as of today, October 4 [2][6]. While one source notes a broader range between $82,000 and $86,000 [2], the specific price points from the latest analysis place it just under $85,000 [6].",
+     "ms": 14394,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 799,
+     "completion_tokens": 81,
+     "cached_tokens": 76,
+     "prompt_ms": 6786,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "Bitcoin is trading at $84,700 today [2]. This price follows a recent pattern where the market has struggled to sustain a recovery above $87,000, with the immediate trading range between $82,000 and $86,000 [2].",
+     "ms": 7524,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 786,
+     "completion_tokens": 64,
+     "cached_tokens": 110,
+     "prompt_ms": 4202,
+     "decode_tps": 19.0
+    },
+    "qwen3-1.7b": {
+     "answer": "Bitcoin is trading at approximately $84,893 today, as shown in the latest web results.",
+     "ms": 1943,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 790,
+     "completion_tokens": 23,
+     "cached_tokens": 110,
+     "prompt_ms": 1322,
+     "decode_tps": 36.4
+    }
+   }
+  },
+  {
+   "q": "What's NVIDIA's stock price right now?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "finance",
+   "lookup": {
+    "status": "ok",
+    "query": "What's NVIDIA's stock price right now October 4, 2026",
+    "kind": "finance",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Is Nvidia (NVDA) a Buy Right Now? (October 2026)",
+      "url": "https://themoneygps.com/is-nvda-a-buy"
+     },
+     {
+      "n": 2,
+      "title": "NVIDIA (NVDA) Stock Price, Quote, News & History - Benzinga",
+      "url": "https://www.benzinga.com/quote/NVDA"
+     },
+     {
+      "n": 3,
+      "title": "NVIDIA Corp. (NVDA) Stock Price Today - The Wall Street Journal",
+      "url": "https://www.wsj.com/market-data/stock/nvda?eafs_enabled=false"
+     },
+     {
+      "n": 4,
+      "title": "Why Is NVIDIA Corporation Stock Up Today? (October 4, 2026) | WhyIs ...",
+      "url": "https://www.whyisstock.com/stocks/NVDA"
+     },
+     {
+      "n": 5,
+      "title": "Nvidia Corp (NVDA) Stock Price & Analysis - nexqual.com",
+      "url": "https://nexqual.com/NVDA"
+     },
+     {
+      "n": 6,
+      "title": "NVIDIA (NVDA) Stock Forecast and Price Target 2026 - MarketBeat",
+      "url": "https://www.marketbeat.com/stocks/NASDAQ/NVDA/forecast/"
+     }
+    ],
+    "ms": 695.2,
+    "note": null,
+    "timings": {
+     "search": 693.9
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "NVIDIA's stock price is currently around $233.95, showing a 1.34% gain today [4][5]. While some sources cite a closing price of $233.95 from October 2nd [3], the most recent data indicates the stock is trading near that level with upward momentum as of this morning [4].",
+     "ms": 13944,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 778,
+     "completion_tokens": 77,
+     "cached_tokens": 76,
+     "prompt_ms": 6555,
+     "decode_tps": 10.4
+    },
+    "qwen3-4b": {
+     "answer": "NVIDIA's stock price is $233.95 as of October 4, 2026, reflecting a 1.34% gain during the day [5]. This price aligns with recent market data and is consistent with the closing price reported on October 2, 2026 [3].",
+     "ms": 7790,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 764,
+     "completion_tokens": 70,
+     "cached_tokens": 87,
+     "prompt_ms": 4157,
+     "decode_tps": 19.1
+    },
+    "qwen3-1.7b": {
+     "answer": "NVIDIA's stock price is $233.95 as of October 4, 2026, 9:16 AM EDT. This is based on the latest data from The Wall Street Journal, which shows the stock closed at $233.95. Additionally, Benzinga reports the stock price as $234.22, but the most recent and accurate figure is $233.95.",
+     "ms": 3966,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 768,
+     "completion_tokens": 95,
+     "cached_tokens": 87,
+     "prompt_ms": 1308,
+     "decode_tps": 35.8
+    }
+   }
+  },
+  {
+   "q": "What's the weather in Paris tomorrow?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "weather",
+   "lookup": {
+    "status": "ok",
+    "query": "What's the weather in Paris October 5, 2026",
+    "kind": "weather",
+    "providers": [
+     "open-meteo",
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Open-Meteo forecast: Paris, Île-de-France Region, FR",
+      "url": "https://open-meteo.com/en/docs#latitude=48.85341&longitude=2.3488"
+     },
+     {
+      "n": 2,
+      "title": "Weather - App Store - Apple",
+      "url": "https://apps.apple.com/us/app/weather/id1069513131"
+     },
+     {
+      "n": 3,
+      "title": "Hour-by-Hour Forecast for Paris, Paris, France - Time and Date",
+      "url": "https://www.timeanddate.com/weather/@2968815/hourly"
+     }
+    ],
+    "ms": 1126.8,
+    "note": null,
+    "timings": {
+     "search": 720.3,
+     "open-meteo": 1125.3
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The weather in Paris tomorrow (Monday, October 5, 2026) is forecast to be overcast with a high of 23.7°C and a low of 13.4°C, with a 0% chance of precipitation [1]. This specific forecast is the most detailed and recent data available for the upcoming day.",
+     "ms": 10800,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 507,
+     "completion_tokens": 73,
+     "cached_tokens": 76,
+     "prompt_ms": 3995,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "Tomorrow in Paris, the weather is expected to be overcast with a high of 23.7°C and a low of 13.4°C, and there is a 0% chance of precipitation [1]. This forecast was updated on Friday, October 2, 2026, and is the most recent available data [3].",
+     "ms": 5907,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 497,
+     "completion_tokens": 74,
+     "cached_tokens": 110,
+     "prompt_ms": 2184,
+     "decode_tps": 19.8
+    },
+    "qwen3-1.7b": {
+     "answer": "The weather in Paris tomorrow, October 5, 2026, is forecasted to be high 23.7°C, low 13.4°C, overcast, and there is 0% chance of precipitation.",
+     "ms": 2033,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 501,
+     "completion_tokens": 51,
+     "cached_tokens": 110,
+     "prompt_ms": 662,
+     "decode_tps": 37.3
+    }
+   }
+  },
+  {
+   "q": "Who is the current president of the United States?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "office",
+   "lookup": {
+    "status": "ok",
+    "query": "Who is the current president of the United States 2026",
+    "kind": "office",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "President Donald J. Trump's First Year in Office - The White House",
+      "url": "https://www.whitehouse.gov/videos/president-donald-j-trumps-first-year-in-office/"
+     },
+     {
+      "n": 2,
+      "title": "Semiquincentennial President Donald J. Trump 2026 $1 Coin Rolls ...",
+      "url": "https://www.usmint.gov/semiquincentennial-president-donald-j-trump-2026-1-coin-rolls-bags-MASTER_SEMIQDJT.html"
+     },
+     {
+      "n": 3,
+      "title": "Who Is the President of the United States? - factually.co",
+      "url": "https://factually.co/fact-checks/politics/who-is-the-president-of-the-usa-ca2555"
+     },
+     {
+      "n": 4,
+      "title": "Second presidency of Donald Trump - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Second_presidency_of_Donald_Trump"
+     },
+     {
+      "n": 5,
+      "title": "President in 2026",
+      "url": "https://whowaspresident.com/2026"
+     },
+     {
+      "n": 6,
+      "title": "Donald J. Trump – The White House",
+      "url": "https://trumpwhitehouse.archives.gov/people/donald-j-trump/"
+     }
+    ],
+    "ms": 700.9,
+    "note": null,
+    "timings": {
+     "search": 699.6
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The current President of the United States is Donald J. Trump [3][5]. He is serving as the 47th president, having assumed office on January 20, 2025, for a term extending through January 20, 2029 [3][4]. This second tenure follows his previous service as the 45th president from 2017 to 2021 [4].",
+     "ms": 15152,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 759,
+     "completion_tokens": 93,
+     "cached_tokens": 76,
+     "prompt_ms": 6428,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "The current president of the United States is Donald J. Trump. He assumed office on January 20, 2025, and is serving his second term as the 47th president [4]. Multiple sources, including the White House and fact-checking sites, confirm his current status as president in 2026 [3], [5].",
+     "ms": 7831,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 745,
+     "completion_tokens": 76,
+     "cached_tokens": 110,
+     "prompt_ms": 3896,
+     "decode_tps": 19.2
+    },
+    "qwen3-1.7b": {
+     "answer": "The current president of the United States is Donald J. Trump. He has been in office since January 20, 2025, and is the 47th president. His term extends through January 20, 2029.",
+     "ms": 2749,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 749,
+     "completion_tokens": 55,
+     "cached_tokens": 110,
+     "prompt_ms": 1231,
+     "decode_tps": 36.0
+    }
+   }
+  },
+  {
+   "q": "Who is the CEO of OpenAI?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "office",
+   "lookup": {
+    "status": "ok",
+    "query": "Who is the CEO of OpenAI 2026",
+    "kind": "office",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "OpenAI says CEO Altman will attend Trump's state dinner for Xi",
+      "url": "https://www.reuters.com/world/china/openai-says-ceo-altman-will-attend-trumps-state-dinner-xi-2026-09-16/"
+     },
+     {
+      "n": 2,
+      "title": "Altman unveils 'always-on' AI agent after OpenAI shelves ... - AP News",
+      "url": "https://apnews.com/article/sam-altman-openai-conference-dots-agent-77b6b8888145869206996d7509d24256"
+     },
+     {
+      "n": 3,
+      "title": "OpenAI will not go public in 2026, says CEO Sam Altman - Le Monde",
+      "url": "https://www.lemonde.fr/en/economy/article/2026/09/13/openai-will-not-go-public-in-2026-says-ceo-sam-altman_6757470_19.html"
+     },
+     {
+      "n": 4,
+      "title": "OpenAI boss and Elon Musk back calls to put brakes on 'reckless' AI ...",
+      "url": "https://www.theguardian.com/technology/2026/sep/13/openai-sam-altman-elon-musk-back-anthropic-calls-brakes-ai-development"
+     },
+     {
+      "n": 5,
+      "title": "OpenAI CEO announces new AI agent and avoids mention of security ...",
+      "url": "https://www.mercurynews.com/2026/09/29/openai-new-agent-dot/"
+     },
+     {
+      "n": 6,
+      "title": "OpenAI CEO Sam Altman on AI: 'We could lose control'",
+      "url": "https://finance.yahoo.com/technology/article/openai-ceo-sam-altman-on-ai-we-could-lose-control-091146594.html"
+     }
+    ],
+    "ms": 834.2,
+    "note": null,
+    "timings": {
+     "search": 832.8
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The CEO of OpenAI is Sam Altman [1][2]. Recent reports confirm he is currently leading the company, having recently announced an \"always-on\" AI agent and stated that OpenAI will not go public in 2026 [3][5].",
+     "ms": 11543,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 754,
+     "completion_tokens": 55,
+     "cached_tokens": 76,
+     "prompt_ms": 6357,
+     "decode_tps": 10.6
+    },
+    "qwen3-4b": {
+     "answer": "The CEO of OpenAI is Sam Altman [1]. He has been actively involved in recent announcements and discussions about AI development and safety, including attending events and addressing concerns about AI control and public listing [2], [5].",
+     "ms": 6399,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 741,
+     "completion_tokens": 47,
+     "cached_tokens": 87,
+     "prompt_ms": 3986,
+     "decode_tps": 19.2
+    },
+    "qwen3-1.7b": {
+     "answer": "The CEO of OpenAI is Sam Altman. This is confirmed by multiple sources, including [1], [3], and [5].",
+     "ms": 2035,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 745,
+     "completion_tokens": 29,
+     "cached_tokens": 87,
+     "prompt_ms": 1254,
+     "decode_tps": 37.2
+    }
+   }
+  },
+  {
+   "q": "When did iOS 27 come out?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "news",
+   "lookup": {
+    "status": "ok",
+    "query": "When did iOS 27 come out 2026",
+    "kind": "news",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "iOS 27 Release Date: Sept. 14 Launch, Siri AI Features - Tech Insider",
+      "url": "https://tech-insider.org/ios-27-release-date-siri-ai-features-2026/"
+     },
+     {
+      "n": 2,
+      "title": "When Did iOS 27 Come Out? 14 September 2026 Release Date - Days To",
+      "url": "https://days.to/when-does/ios-27-release/come-out"
+     },
+     {
+      "n": 3,
+      "title": "What time does iOS 27 come out today (September 14, 2026)",
+      "url": "https://tech.sportskeeda.com/mobiles/news-what-time-ios-27-come-today-september-14-2026"
+     },
+     {
+      "n": 4,
+      "title": "iOS 27 Release Date: What Apple Confirmed for September 14",
+      "url": "https://tech-insider.org/ios-27-release-date-what-apple-confirmed-for-september-14/"
+     },
+     {
+      "n": 5,
+      "title": "Here's When iOS 27 Rolls Out Today in Every Time Zone [Update: It's Out]",
+      "url": "https://www.macrumors.com/2026/09/13/ios-27-release-date-time-zones/"
+     },
+     {
+      "n": 6,
+      "title": "When does iOS 27 come out? Date and time you can download the new iPhone operating system around the world",
+      "url": "https://www.fastcompany.com/91606839/ios-27-release-date-time-download-iphone-update-today-time-zones"
+     }
+    ],
+    "ms": 728.0,
+    "note": null,
+    "timings": {
+     "search": 727.2
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "iOS 27 came out on Monday, September 14, 2026 [1][2]. The update began rolling out over-the-air at 1 p.m. Eastern Time that day, introducing major AI features and support for Apple's first foldable iPhone [4].",
+     "ms": 12249,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 760,
+     "completion_tokens": 60,
+     "cached_tokens": 76,
+     "prompt_ms": 6427,
+     "decode_tps": 10.3
+    },
+    "qwen3-4b": {
+     "answer": "iOS 27 came out on September 14, 2026 [1]. It was rolled out to compatible iPhones starting at 1 p.m. Eastern Time (10 a.m. Pacific Time) [4].",
+     "ms": 6424,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 746,
+     "completion_tokens": 49,
+     "cached_tokens": 110,
+     "prompt_ms": 3919,
+     "decode_tps": 19.2
+    },
+    "qwen3-1.7b": {
+     "answer": "iOS 27 came out on September 14, 2026. It was rolled out to compatible iPhones on Monday, September 14, 2026, with the update appearing over-the-air starting at 10 a.m. Pacific Time (1 p.m. Eastern), per MacRumors. The update includes a major AI-powered Siri revamp, Visual Intelligence tools, and some minor design tweaks.",
+     "ms": 3793,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 750,
+     "completion_tokens": 91,
+     "cached_tokens": 110,
+     "prompt_ms": 1274,
+     "decode_tps": 36.1
+    }
+   }
+  },
+  {
+   "q": "What is the latest stable Python release?",
+   "live": true,
+   "classified_ok": true,
+   "kind": "general",
+   "lookup": {
+    "status": "ok",
+    "query": "What is the latest stable Python release 2026",
+    "kind": "general",
+    "providers": [
+     "searxng"
+    ],
+    "sources": [
+     {
+      "n": 1,
+      "title": "Python (programming language) - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Python_(programming_language)"
+     },
+     {
+      "n": 2,
+      "title": "Download Python | Python.org",
+      "url": "https://www.python.org/downloads/"
+     },
+     {
+      "n": 3,
+      "title": "Python 3.14 in 2026: What's New, What's Faster, and When You'll ...",
+      "url": "https://medium.com/@gautsoni/python-3-14-in-2026-whats-new-what-s-faster-and-when-you-ll-actually-feel-it-with-code-4b2b5a62c9fd"
+     },
+     {
+      "n": 4,
+      "title": "Python Source Releases",
+      "url": "https://www.python.org/downloads/source/"
+     },
+     {
+      "n": 5,
+      "title": "Which Python Version Should I Use in 2026? - Krishnamohan Productions",
+      "url": "https://www.krishnamohanproductions.com/blog/tech-blog/which-python-version-should-i-use-2026/"
+     },
+     {
+      "n": 6,
+      "title": "Python Latest Version - Support Lifecycle & EOL",
+      "url": "https://versionlog.com/python/"
+     }
+    ],
+    "ms": 811.0,
+    "note": null,
+    "timings": {
+     "search": 809.6
+    }
+   },
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The latest stable Python release is version 3.14.8 [1][2]. This expedited security release was published on September 30, 2026, and now includes official Android binary releases [1].",
+     "ms": 12044,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 859,
+     "completion_tokens": 49,
+     "cached_tokens": 76,
+     "prompt_ms": 7392,
+     "decode_tps": 10.6
+    },
+    "qwen3-4b": {
+     "answer": "The latest stable Python release is Python 3.14.8, released on September 30, 2026 [1][4]. This version is the most recent stable release as of October 4, 2026, and includes security updates and improvements over previous versions in the 3.14 series [2][6].",
+     "ms": 8910,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 846,
+     "completion_tokens": 75,
+     "cached_tokens": 87,
+     "prompt_ms": 4818,
+     "decode_tps": 18.2
+    },
+    "qwen3-1.7b": {
+     "answer": "The latest stable Python release as of October 4, 2026, is Python 3.14.8. This version was released on September 30, 2026, and is available for download. It is an \"expedited security release\" and includes the latest features and security updates.",
+     "ms": 3475,
+     "fact": true,
+     "cite": false,
+     "clean": true,
+     "prompt_tokens": 850,
+     "completion_tokens": 68,
+     "cached_tokens": 87,
+     "prompt_ms": 1532,
+     "decode_tps": 35.2
+    }
+   }
+  },
+  {
+   "q": "What is the capital of Australia?",
+   "live": false,
+   "classified_ok": true,
+   "kind": "none",
+   "lookup": null,
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "The capital of Australia is **Canberra**.\n\nIt is located in the Australian Capital Territory (ACT) and was chosen as the compromise between Sydney and Melbourne when the federation of the Australian states was established in 1901.",
+     "ms": 4823,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 95,
+     "completion_tokens": 48,
+     "cached_tokens": 76,
+     "prompt_ms": 350,
+     "decode_tps": 10.8
+    },
+    "qwen3-4b": {
+     "answer": "The capital of Australia is Canberra.",
+     "ms": 411,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 91,
+     "completion_tokens": 8,
+     "cached_tokens": 79,
+     "prompt_ms": 71,
+     "decode_tps": 23.0
+    },
+    "qwen3-1.7b": {
+     "answer": "The capital of Australia is Canberra.",
+     "ms": 255,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 95,
+     "completion_tokens": 8,
+     "cached_tokens": 79,
+     "prompt_ms": 38,
+     "decode_tps": 39.4
+    }
+   }
+  },
+  {
+   "q": "Write a haiku about the ocean",
+   "live": false,
+   "classified_ok": true,
+   "kind": "none",
+   "lookup": null,
+   "arms": {
+    "qwen3.5-9b": {
+     "answer": "Blue waves crash below,\nWhite foam dances on the shore,\nSalt air fills the breeze.",
+     "ms": 2216,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 95,
+     "completion_tokens": 21,
+     "cached_tokens": 76,
+     "prompt_ms": 345,
+     "decode_tps": 10.7
+    },
+    "qwen3-4b": {
+     "answer": "Salt-kissed waves sigh low,  \nMoonlight spills on silver foam—  \nNight breathes in the deep.",
+     "ms": 1152,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 91,
+     "completion_tokens": 25,
+     "cached_tokens": 79,
+     "prompt_ms": 88,
+     "decode_tps": 22.7
+    },
+    "qwen3-1.7b": {
+     "answer": "Tides rise and fall,  \nWhispers of the deep,  \nSea forever flows.",
+     "ms": 483,
+     "fact": true,
+     "cite": true,
+     "clean": true,
+     "prompt_tokens": 95,
+     "completion_tokens": 19,
+     "cached_tokens": 79,
+     "prompt_ms": 46,
+     "decode_tps": 41.8
+    }
+   }
+  }
+ ]
+}

@@ -66,6 +66,7 @@ def test_follow_up_inherits_need():
     (datetime(2026, 9, 30, 12, tzinfo=ET), "this weekend", date(2026, 10, 3)),   # Wednesday → coming Saturday
     (datetime(2026, 9, 30, 12, tzinfo=ET), "last weekend", date(2026, 9, 26)),
     (NOW, "last weekend", date(2026, 9, 26)),
+    (datetime(2026, 10, 4, 9, 0, tzinfo=ET), "on Sunday", date(2026, 9, 27)),     # "who won on Sunday", asked Sunday
 ])
 def test_resolve_dates(now, phrase, expect):
     r = resolve_dates(f"who won {phrase}", now)
@@ -605,3 +606,9 @@ def test_explicit_alias_never_sends_the_prompt_to_jev(gw_client, monkeypatch):
     c.post("/v1/chat/completions", headers={**H, "X-LIF-Data-Class": "PUBLIC"}, json={
         "model": "local/fast", "lif": {"web": "auto"}, "messages": [{"role": "user", "content": "Write a haiku"}]})
     assert ("needs-live-data", "CONFIDENTIAL") in seen_classes
+
+
+def test_same_weekday_present_tense_means_today():
+    sun = datetime(2026, 10, 4, 9, 0, tzinfo=ET)
+    assert resolve_dates("who plays on Sunday", sun).target == date(2026, 10, 4)
+    assert resolve_dates("did the Steelers win on Sunday", sun).target == date(2026, 9, 27)
