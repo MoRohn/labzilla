@@ -35,6 +35,8 @@ yield:
 # that line is crossed, whatever the cause (the primary workload, desktop apps, the LIF itself).
 memory_guard:
   sustain_sec: 60
+  large_aliases: [local/web]               # shed first: its head model's server (12+ GiB; gateway → local/default)
+  shed_large_below_mib: 10240              # restored above this + the server's memory limit + 1 GiB
   optional: [tier0-small]                  # shed first (redundancy tiers)
   shed_optional_below_mib: 9216
   restore_optional_above_mib: 13056       # ≥ shed line + tier0-small's 3840 Mi limit, or a restore re-sheds
@@ -154,6 +156,13 @@ models:
     canary_min_requests: 100        # …and enough answers for the percentiles to mean something
     canary_max_hours: 72            # no verdict by then (too little traffic) → canary ends as inconclusive
     canary_max_error_rate: 0.01     # failed upstream calls / requests
+    # local/web (evaluator.compare_web): grounded quality on evals/web.yaml decides, against what answers
+    # grounded questions today (local/web's head, else local/default's), with an absolute latency ceiling.
+    web:
+      min_quality: 0.85             # share of web-suite items passed
+      min_gain: 0.05                # over the baseline's web-suite score (when the baseline was measured)
+      max_latency_ms_p50: 15000     # end to end per answer, reasoning included
+      crash_rate_max: 0
 
 batch:
   enabled: true

@@ -32,7 +32,7 @@ LOG = log.get("lif.lifecycle")
 
 CATEGORY_ALIAS = {"fast": "local/fast", "general": "local/default", "coding": "local/code",
                   "reasoning": "local/reasoning", "embedding": "local/embedding", "reranking": "local/rerank",
-                  "vision": "local/vision"}
+                  "vision": "local/vision", "web": "local/web"}
 HEADROOM_MIB = 8192 + 1024       # gpusched safety headroom + margin
 
 
@@ -40,11 +40,25 @@ def suite_for(category: str | None) -> str:
     """Benchmark suite per category: vision models are graded on images, embedders on sanity."""
     if category in ("embedding", "reranking"):
         return "embedding"
-    return "vision" if category == "vision" else "core"
+    return {"vision": "vision", "web": "web"}.get(category or "", "core")
 
 
 class OpError(Exception):
     pass
+
+
+def _resident_mib(m: dict) -> int:
+    """Memory a server will hold: its anonymous memory plus the weights it keeps hot. The weights are
+    page cache that MemAvailable counts as free, but a serving model touches them every token, so
+    reclaiming them thrashes (tier0, 2026-10-01). Small models were gated on anon alone; a 12 GiB
+    MoE model can't be."""
+    fit, prof = m.get("fit") or {}, m.get("profile") or {}
+    anon = int(fit.get("anon_mib") or prof.get("anon_mib") or 1024)
+    weights = int(fit.get("weights_mib") or prof.get("weights_mib") or 0)
+    return anon + (weights if weights >= LARGE_WEIGHTS_MIB else 0)
+
+
+LARGE_WEIGHTS_MIB = 6144         # at or above this, weights count toward the start-up headroom gate
 
 
 def deployment_name(mid: str, profile: dict) -> str:
@@ -158,8 +172,12 @@ class Lifecycle:
 
     # ── benchmark ────────────────────────────────────────────────────────────
 
-    def benchmark(self, mid: str, actor: str) -> dict:
+    def benchmark(self, mid: str, actor: str, suite: str | None = None) -> dict:
+        """`suite`: run another suite on a live model, e.g. the web suite on local/default's model so a
+        local/web candidate has a baseline to beat (see compare)."""
         m = self._get(mid)
+        if suite is not None and suite not in ("core", "vision", "web", "embedding"):
+            raise OpError(f"unknown suite {suite!r}")
         if m["state"] not in ("STAGED", "APPROVED", "STANDBY", "PRODUCTION", "CANARY"):
             raise OpError(f"{mid} is {m['state']}; benchmark needs a downloaded (STAGED) model")
         if m["profile"].get("device") != "cpu":
@@ -171,13 +189,15 @@ class Lifecycle:
         if not live:
             if self.reg.setting("maintenance", False):
                 raise OpError("maintenance mode")
-            anon = int((m["fit"] or {}).get("anon_mib") or 1024)
-            if snap.mem_available_mib - anon < HEADROOM_MIB:
+            need = _resident_mib(m)
+            if snap.mem_available_mib - need < HEADROOM_MIB:
                 raise OpError(f"not enough host headroom: MemAvailable {snap.mem_available_mib:.0f} MiB − candidate "
-                              f"~{anon} MiB < {HEADROOM_MIB} MiB (gpusched safety headroom + margin)")
-        return self._spawn(f"benchmark:{mid}", self._benchmark(mid, actor, bool(live)))
+                              f"~{need} MiB < {HEADROOM_MIB} MiB (gpusched safety headroom + margin)")
+        if suite is not None and suite != suite_for(m["category"]) and not live:
+            raise OpError("another suite runs only on a live model; a candidate is benchmarked on its own category")
+        return self._spawn(f"benchmark:{mid}", self._benchmark(mid, actor, bool(live), suite))
 
-    async def _benchmark(self, mid: str, actor: str, live: bool) -> dict:
+    async def _benchmark(self, mid: str, actor: str, live: bool, suite_override: str | None = None) -> dict:
         m = self._get(mid)
         p = m["profile"]
         temp = None
@@ -207,7 +227,7 @@ class Lifecycle:
                 self.reg.transition(mid, "BENCHMARKING", "functional + quality benchmark", actor)
             stop = lambda: self.gpu.current().state == BlerbzState.IMMINENT     # live or candidate
             extra = {"chat_template_kwargs": p["chat_template_kwargs"]} if p.get("chat_template_kwargs") else {}
-            suite = suite_for(p.get("category"))
+            suite = suite_override or suite_for(p.get("category"))
             if suite == "embedding":
                 results, summary = await embed_benchmark(url)
             else:
@@ -217,6 +237,8 @@ class Lifecycle:
                 self.reg.transition(mid, "STAGED", "benchmark aborted: the primary workload reclaimed capacity", actor)
                 return summary
             self.reg.add_benchmark(mid, suite, results, summary)
+            self.reg.event("benchmark_complete", mid, actor, suite=suite, quality=summary.get("quality"),
+                           latency_ms_p50=summary.get("latency_ms_p50"))
             if live:
                 return summary
             report = await self.compare(mid, summary)
@@ -243,6 +265,8 @@ class Lifecycle:
         alias = CATEGORY_ALIAS.get(m["category"], "local/default")
         cur_alias = self.reg.alias(alias)
         incumbent = cur_alias["chain"][0] if cur_alias and cur_alias["chain"] else None
+        if m["category"] == "web":
+            return self._compare_web(mid, summary, incumbent)
         inc_b = self.reg.latest_benchmark(incumbent, suite_for(m["category"])) if incumbent else None
         inc_m = self.reg.get(incumbent) if incumbent else None
         if "quality" not in summary:      # embedding: latency/sanity only
@@ -274,15 +298,98 @@ class Lifecycle:
                        jev=rep.get("jev"))
         return rep
 
+    def _compare_web(self, mid: str, summary: dict, incumbent: str | None) -> dict:
+        """local/web has its own policy: grounded quality is the point, so the size and latency ratios
+        the other aliases use (+20 % memory, +10 % TTFT) would reject every upgrade by design. The
+        baseline is whatever answers grounded questions today: the local/web head, else the head of the
+        gateway's fallback alias (local/default) measured on the same web suite."""
+        base_id = incumbent
+        if base_id is None:
+            fb = self.reg.alias("local/default")
+            base_id = fb["chain"][0] if fb and fb["chain"] else None
+        base = self.reg.latest_benchmark(base_id, "web") if base_id else None
+        rep = evaluator.compare_web(summary, base["summary"] if base else None)
+        rep.update({"alias": "local/web", "incumbent": incumbent, "baseline": base_id,
+                    "baseline_benchmarked": base is not None})
+        if base_id and base is None:
+            rep["note"] = (f"no web-suite benchmark for the baseline {base_id}: run `local-ai models benchmark "
+                           f"{base_id} --suite web` first for a measured gain")
+        self.reg.event("comparison_complete", mid, recommendation=rep["recommendation"], incumbent=incumbent,
+                       baseline=base_id)
+        return rep
+
+    # ── operator nomination (a specific model, outside discovery's categories) ──
+
+    async def nominate(self, spec: dict, actor: str, hf=None) -> dict:
+        """Register one pinned GGUF from Hugging Face as a CANDIDATE: the same metadata, license and
+        hardware-fit gates discovery applies, then the normal download → benchmark → promote path.
+        spec: hf_repo, file, category; optional revision (default: current), active_params_b (MoE),
+        arch {num_layers, num_kv_heads, head_dim, vocab_size}, chat_template_kwargs, context, concurrency, id."""
+        from lif.models import discovery, hf as hfmod
+        from lif.models import hardware_fit
+        cat = spec.get("category")
+        if cat not in CATEGORY_ALIAS:
+            raise OpError(f"category must be one of {sorted(CATEGORY_ALIAS)}")
+        client = hf or hfmod.HFClient()
+        try:
+            info = await client.model_info(spec["hf_repo"], spec.get("revision"))
+        except Exception as exc:
+            raise OpError(f"Hugging Face lookup failed for {spec.get('hf_repo')}: {exc}") from exc
+        meta = hfmod.normalize(info, cat)
+        files = {f["file"]: f for f in hfmod.gguf_files(info)}
+        pick = files.get(spec.get("file") or "")
+        if not pick or not pick.get("sha256") or not pick.get("size"):
+            raise OpError(f"{spec.get('file')!r} is not a single-file GGUF with a sha256 in {spec['hf_repo']} "
+                          f"(have: {sorted(files)[:8]})")
+        meta["gguf_pick"] = pick
+        if spec.get("active_params_b"):
+            meta["active_params_b"] = float(spec["active_params_b"])
+        if spec.get("params_b"):
+            meta["params_b"] = float(spec["params_b"])
+        # Shape from the model card when the repo's config doesn't carry it (GGUF-only repos often don't);
+        # without it the estimator assumes a worst-case KV cache.
+        for k in ("num_layers", "num_kv_heads", "head_dim", "vocab_size"):
+            if isinstance((spec.get("arch") or {}).get(k), int):
+                meta[k] = spec["arch"][k]
+        if not meta.get("revision") or len(meta["revision"]) != 40:
+            raise OpError("could not resolve a 40-char revision")
+        why = discovery.metadata_filter({**meta, "downloads": max(meta.get("downloads") or 0, 10**6)}, cat,
+                                        {m["model_id"] for m in self.reg.list() if m["blocked"]})
+        if why:
+            raise OpError(f"rejected by the discovery gates: {why}")
+        ctx, conc = int(spec.get("context", 8192)), int(spec.get("concurrency", 2))
+        fit = hardware_fit.estimate(meta, device="cpu", context=ctx, concurrency=conc).to_dict()
+        if fit["verdict"] != "fits_cpu":
+            raise OpError(f"does not fit the CPU tier: {'; '.join(fit.get('reasons') or [])}")
+        prof = {"category": cat, "runtime": "llama.cpp", "device": "cpu", "hf_repo": meta["model_id"],
+                "revision": meta["revision"], "file": pick["file"], "sha256": pick["sha256"], "size": pick["size"],
+                "precision": (pick.get("quant") or "").lower(), "params_b": meta.get("params_b"),
+                "context": ctx, "concurrency": conc, "weights_mib": fit["weights_mib"], "anon_mib": fit["anon_mib"],
+                "memory_budget_mb": hardware_fit.memory_limit_mib(fit["weights_mib"], fit["anon_mib"]),
+                "license": meta.get("license")}
+        if meta.get("active_params_b"):
+            prof["active_params_b"] = meta["active_params_b"]
+        if isinstance(spec.get("chat_template_kwargs"), dict):
+            prof["chat_template_kwargs"] = spec["chat_template_kwargs"]
+        templates.validate_profile(prof)
+        mid = spec.get("id") or discovery.profile_id(meta, "cpu")
+        if self.reg.get(mid):
+            raise OpError(f"{mid} is already registered ({self.reg.get(mid)['state']})")
+        screening = {"nominated_by": actor, "recommendation": {"why": "operator nomination"}, "priority": 0}
+        self.reg.upsert(mid, meta["model_id"], meta["revision"], cat, "DISCOVERED", meta=meta, profile=prof, fit=fit,
+                        screening=screening, actor=actor, reason="nominated by the operator")
+        self.reg.transition(mid, "CANDIDATE", f"operator nomination for {CATEGORY_ALIAS[cat]}", actor)
+        return {"id": mid, "state": "CANDIDATE", "alias": CATEGORY_ALIAS[cat], "fit": fit, "profile": prof}
+
     # ── serving: load / unload / canary / promote / rollback ────────────────
 
     def _headroom_ok(self, m: dict) -> tuple[bool, str]:
         snap = self.gpu.current()
-        anon = int((m["fit"] or {}).get("anon_mib") or 1024)
+        need = _resident_mib(m)
         if not snap.reachable:
             return False, "gpusched unreachable: cannot verify memory headroom"
-        if snap.mem_available_mib - anon < HEADROOM_MIB:
-            return False, (f"would leave {snap.mem_available_mib - anon:.0f} MiB MemAvailable "
+        if snap.mem_available_mib - need < HEADROOM_MIB:
+            return False, (f"would leave {snap.mem_available_mib - need:.0f} MiB MemAvailable "
                            f"(< {HEADROOM_MIB} MiB: gpusched headroom + margin)")
         return True, ""
 
@@ -445,30 +552,41 @@ class Lifecycle:
         # an operator reservation (Settings → reserve_gpu_mib) makes the guard shed earlier
         reserve = float(self.reg.setting("reserve_gpu_mib", 0) or 0)
         avail, now, sustain = snap.mem_available_mib - reserve, time.time(), float(g.get("sustain_sec", 60))
+        groups: list[tuple[str, float, float]] = []
+        # Large aliases first (local/web): a 12+ GiB server, shed at a higher line so the small tiers stay up,
+        # and restored only when its whole limit fits above that line again.
+        for alias in g.get("large_aliases") or []:
+            a = self.reg.alias(alias)
+            head = self.reg.get(a["chain"][0]) if a and a["chain"] else None
+            if head and head["profile"].get("endpoint"):
+                lo = float(g.get("shed_large_below_mib", 10240))
+                budget = float(head["profile"].get("memory_budget_mb") or 0)
+                groups.append((deployment_name(head["id"], head["profile"]), lo, lo + budget + 1024))
         for group, lo, hi in (("optional", "shed_optional_below_mib", "restore_optional_above_mib"),
                               ("secondary", "shed_secondary_below_mib", "restore_secondary_above_mib")):
-            for dep in g.get(group) or []:
-                shed = self.guard_shed.get(dep, False)
-                if not shed and self._sustained(f"shed:{dep}", avail < float(g[lo]), now, sustain):
+            groups += [(dep, float(g[lo]), float(g[hi])) for dep in g.get(group) or []]
+        for dep, lo_mib, hi_mib in groups:
+            shed = self.guard_shed.get(dep, False)
+            if not shed and self._sustained(f"shed:{dep}", avail < lo_mib, now, sustain):
+                await self.k8s.scale("ai-serving", dep, 0)
+                self.guard_shed[dep] = True
+                self.reg.db.x("INSERT OR REPLACE INTO settings(key,value) VALUES('memory_guard_shed', ?)",
+                              (json.dumps(self.guard_shed),))
+                self.reg.event("memory_guard_shed", dep, "gpu-resource-manager", mem_available_mib=avail,
+                               threshold_mib=lo_mib, reason="protect gpusched headroom for the primary workload")
+            elif shed and avail < lo_mib:
+                # reconcile: something (an apply, an operator) brought it back while still short
+                d = await self.k8s.deployment("ai-serving", dep) or {}
+                if (d.get("spec") or {}).get("replicas"):
                     await self.k8s.scale("ai-serving", dep, 0)
-                    self.guard_shed[dep] = True
-                    self.reg.db.x("INSERT OR REPLACE INTO settings(key,value) VALUES('memory_guard_shed', ?)",
-                                  (json.dumps(self.guard_shed),))
-                    self.reg.event("memory_guard_shed", dep, "gpu-resource-manager", mem_available_mib=avail,
-                                   threshold_mib=g[lo], reason="protect gpusched headroom for the primary workload")
-                elif shed and avail < float(g[lo]):
-                    # reconcile: something (an apply, an operator) brought it back while still short
-                    d = await self.k8s.deployment("ai-serving", dep) or {}
-                    if (d.get("spec") or {}).get("replicas"):
-                        await self.k8s.scale("ai-serving", dep, 0)
-                        self.reg.event("memory_guard_reshed", dep, "gpu-resource-manager", mem_available_mib=avail)
-                elif shed and self._sustained(f"restore:{dep}", avail > float(g[hi]), now, sustain):
-                    await self.k8s.scale("ai-serving", dep, 1)
-                    self.guard_shed[dep] = False
-                    self.reg.db.x("INSERT OR REPLACE INTO settings(key,value) VALUES('memory_guard_shed', ?)",
-                                  (json.dumps(self.guard_shed),))
-                    self.reg.event("memory_guard_restore", dep, "gpu-resource-manager", mem_available_mib=avail,
-                                   threshold_mib=g[hi])
+                    self.reg.event("memory_guard_reshed", dep, "gpu-resource-manager", mem_available_mib=avail)
+            elif shed and self._sustained(f"restore:{dep}", avail > hi_mib, now, sustain):
+                await self.k8s.scale("ai-serving", dep, 1)
+                self.guard_shed[dep] = False
+                self.reg.db.x("INSERT OR REPLACE INTO settings(key,value) VALUES('memory_guard_shed', ?)",
+                              (json.dumps(self.guard_shed),))
+                self.reg.event("memory_guard_restore", dep, "gpu-resource-manager", mem_available_mib=avail,
+                               threshold_mib=hi_mib)
 
     def guard_status(self) -> dict:
         return {"shed": [d for d, v in self.guard_shed.items() if v], "pending": dict(self.guard_since)}

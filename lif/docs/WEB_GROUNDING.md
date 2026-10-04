@@ -79,7 +79,24 @@ Grounded answers are never served from the deterministic (temperature 0) cache.
 |---|---|
 | SearXNG (pinned digest, 192–512 Mi, gateway-only NetworkPolicy) | `deploy/k8s/base/17-searxng.yaml` |
 | Its secret_key | `scripts/create-secrets.sh` → Secret `ai-system/searxng` |
-| `local/web` chain | Promote a model to it (`local-ai models promote <id> --alias local/web`). Until then `local/default` answers |
+| `local/web` chain | Promote a model to it (below). Until then `local/default` answers |
+
+## Promoting a model into `local/web`
+
+Models for `local/web` are nominated by the operator: they are not discovered. A web model's quality is how well it reads sources, so only the `web` suite can show it. They go through the usual registry states and gates.
+
+| Step | Command | Gate |
+|---|---|---|
+| 1. Nominate | `local-ai models nominate ggml-org/gpt-oss-20b-GGUF --file gpt-oss-20b-MXFP4.gguf --category web --revision ef9b12f2ff56c69cf32153a02784e7a3c88bf524 --active-params-b 3.6 --concurrency 1 --arch '{"num_layers":24,"num_kv_heads":8,"head_dim":64,"vocab_size":201088}' --template-kwargs '{"reasoning_effort":"low"}'` | License allow-list, pinned revision, sha256'd single-file GGUF, CPU fit. A MoE model is sized by its active parameters for speed and by all of them for memory (resident cap 12 GiB) |
+| 2. Download | `local-ai models download gpt-oss-20b-mxfp4-cpu` | sha256-verified; a file already in the store is reused |
+| 3. Baseline | `local-ai models benchmark qwen3-4b-instruct-2507-q4km-cpu --suite web` | Runs the web suite on the live model behind `local/default` (today's answerer) |
+| 4. Benchmark | `local-ai models benchmark gpt-oss-20b-mxfp4-cpu` | Not while the primary workload is HIGH/IMMINENT. Needs MemAvailable ≥ weights + anon + 9 GiB (for models with ≥ 6 GiB of weights, the weights count). Temporary server, deleted after |
+| 5. Decide | (automatic) `evaluator.compare_web` → APPROVED or REJECTED | `models.promotion.web`: quality ≥ 0.85, a gain ≥ 0.05 over the baseline, every honesty and safety item passing, p50 ≤ 15 s. Never auto-canaried |
+| 6. Promote | `local-ai models promote gpt-oss-20b-mxfp4-cpu --alias local/web` | The same headroom gate. Rollback: `local-ai models rollback local/web` |
+
+Once promoted, the memory guard sheds the `local/web` server first (`memory_guard.large_aliases`), below 10 GiB MemAvailable. It restores it only when its whole memory limit fits above that line again. Meanwhile grounded answers go to `local/default`.
+
+The `web` suite (`evals/web.yaml`) has 15 items with fixed evidence: feed lines, snippets, conflicting sources, no results, and an injection in a snippet. Prompts are built with the gateway's own functions, so the benchmark measures what production sends.
 
 Remove SearXNG: `kubectl delete -f deploy/k8s/base/17-searxng.yaml`. With it gone, lookups report `error` and the model says it couldn't confirm, instead of guessing.
 

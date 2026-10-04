@@ -354,6 +354,8 @@ def gw_client(monkeypatch):
         search = FakeSearch([Hit("Pitt 35-33 Oregon State - ESPN", "https://www.espn.com/x", "Pitt won 35-33")])
         gw.S.grounder = webground.Grounder(search, SportsFeed(httpx.AsyncClient(transport=httpx.MockTransport(espn))),
                                            weather=None)
+        # The gateway resolves "last night" against the clock: pin it to the fixtures' Saturday morning.
+        monkeypatch.setattr(webground, "now_in", lambda tz=None: NOW.astimezone(ZoneInfo(tz)) if tz else NOW)
         calls.clear()
         answers.clear()
         yield c, gw, search

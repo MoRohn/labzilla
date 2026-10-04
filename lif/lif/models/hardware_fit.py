@@ -19,7 +19,11 @@ from lif.common import config
 
 GRAMZ_UNLOAD_MIB = 34_600          # measured 2026-09-30 (gpusched live unload)
 CPU_ANON_BUDGET_MIB = 2_048        # per CPU model: KV + buffers + prompt cache (anon) — tier0 4B: 1.38 GiB + 0.25 cache
-CPU_MAX_WEIGHTS_MIB = 6_144        # beyond this, CPU decode on A725 cores drops below ~8 tok/s
+CPU_MAX_WEIGHTS_MIB = 6_144        # weights READ PER TOKEN beyond this: CPU decode on A725 cores drops below ~8 tok/s
+# Mixture-of-experts models read only their active experts per token, so decode speed follows the active
+# weights while memory follows all of them. Resident ceiling for one CPU model: the box keeps ~20 GiB free
+# with every primary-workload resident loaded, and gpusched needs 8 GiB of it (2026-10-03, n=1).
+CPU_MAX_RESIDENT_MIB = 12_288
 # Vision (llama.cpp mtmd): the mmproj is read into anonymous buffers (not mmap'd), and encoding an
 # image needs a compute buffer for the vision tower. ESTIMATE, not yet measured on this host:
 # Qwen-VL class projectors at <=1024 px images. Replace with a measured number (date, n) after
@@ -105,6 +109,9 @@ def estimate(meta: dict, *, device: str = "auto", context: int = 8192, concurren
         weights = int(pb * 1e9 * BYTES_PER_PARAM.get((meta.get("precision") or "BF16").upper(), 2.0) / 2**20)
     else:
         return FitReport("no_fit", 0, 0, 0, 0, 0, None, ["parameter count unknown — cannot size safely"])
+    # MoE: the per-token read is the active share of the weights (meta.active_params_b, from the model card)
+    active = float(meta.get("active_params_b") or 0)
+    read = int(weights * active / pb) if active and pb and active < pb else weights
     kv = kv_cache_mib(meta, context, concurrency)
     embedding = meta.get("category") in ("embedding", "reranking")
     overhead = runtime_overhead_mib(meta, embedding=embedding) + (0 if embedding else PROMPT_CACHE_MIB)
@@ -115,18 +122,20 @@ def estimate(meta: dict, *, device: str = "auto", context: int = 8192, concurren
     total = weights + kv + overhead + vision
     anon = kv + overhead + vision         # the projector is anonymous memory: it drives the headroom gates
     text_anon = kv + overhead
-    tps = round(CPU_DECODE_GBPS * 1024 / max(weights, 1), 1)
+    tps = round(CPU_DECODE_GBPS * 1024 / max(read, 1), 1)
 
     def rep(verdict, tps_, why):
         return FitReport(verdict, weights, kv, overhead, total, anon, tps_, why, mmproj, img)
 
-    cpu_ok = bool(pick) and weights <= CPU_MAX_WEIGHTS_MIB and text_anon <= CPU_ANON_BUDGET_MIB \
-        and vision <= CPU_VISION_EXTRA_MAX_MIB
+    cpu_ok = bool(pick) and read <= CPU_MAX_WEIGHTS_MIB and weights <= CPU_MAX_RESIDENT_MIB \
+        and text_anon <= CPU_ANON_BUDGET_MIB and vision <= CPU_VISION_EXTRA_MAX_MIB
     if device in ("auto", "cpu"):
         if not pick:
             reasons.append("no GGUF artifact → not servable on the CPU tier (llama.cpp)")
-        elif weights > CPU_MAX_WEIGHTS_MIB:
-            reasons.append(f"weights {weights} MiB > CPU tier max {CPU_MAX_WEIGHTS_MIB} MiB (≈{tps} tok/s)")
+        elif read > CPU_MAX_WEIGHTS_MIB:
+            reasons.append(f"weights read per token {read} MiB > CPU tier max {CPU_MAX_WEIGHTS_MIB} MiB (≈{tps} tok/s)")
+        elif weights > CPU_MAX_RESIDENT_MIB:
+            reasons.append(f"resident weights {weights} MiB > CPU tier max {CPU_MAX_RESIDENT_MIB} MiB")
         elif text_anon > CPU_ANON_BUDGET_MIB:
             reasons.append(f"KV+buffers {text_anon} MiB > CPU anon budget {CPU_ANON_BUDGET_MIB} MiB; reduce context")
         elif vision > CPU_VISION_EXTRA_MAX_MIB:

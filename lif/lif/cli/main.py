@@ -238,6 +238,27 @@ def cmd_models(api: Api, args) -> int:
                 out(args, runs["runs"][0], render_funnel)
                 return 0 if runs["runs"][0].get("status") == "succeeded" else 1
             time.sleep(3)
+    elif a == "nominate":
+        if not args.target or not args.file or not args.category:
+            raise CliError("models nominate needs REPO, --file and --category")
+        body = {"hf_repo": args.target, "file": args.file, "category": args.category}
+        for k in ("revision", "active_params_b", "context", "concurrency", "id"):
+            if getattr(args, k, None) is not None:
+                body[k] = getattr(args, k)
+        if args.arch:
+            try:
+                body["arch"] = json.loads(args.arch)
+            except json.JSONDecodeError as exc:
+                raise CliError(f"--arch is not JSON: {exc}") from exc
+        if args.template_kwargs:
+            try:
+                body["chat_template_kwargs"] = json.loads(args.template_kwargs)
+            except json.JSONDecodeError as exc:
+                raise CliError(f"--template-kwargs is not JSON: {exc}") from exc
+        out(args, api.ctl("POST", "/v1/models/nominate", body),
+            lambda d: f"{d.get('id')} → {d.get('state')} for {d.get('alias')} "
+                      f"(fit {(d.get('fit') or {}).get('verdict')}, ~{(d.get('fit') or {}).get('est_cpu_decode_tps')} tok/s, "
+                      f"{(d.get('profile') or {}).get('memory_budget_mb')} MiB limit). Next: local-ai models download {d.get('id')}")
     elif a == "rollback":
         body = {"alias": args.target}
         if args.to_version is not None:
@@ -254,6 +275,8 @@ def cmd_models(api: Api, args) -> int:
             body["alias"] = args.alias
         if getattr(args, "percent", None) is not None:
             body["percent"] = args.percent
+        if getattr(args, "suite", None):
+            body["suite"] = args.suite
         out(args, api.ctl("POST", f"/v1/models/{args.target}/{a}", body),
             lambda d: json.dumps(d, indent=2, default=str))
     return 0
@@ -311,7 +334,7 @@ def cmd_activity(api: Api, args) -> int:
 
 
 MODEL_ACTIONS = ["list", "refresh", "candidates", "benchmark", "load", "unload", "promote", "canary", "rollback",
-                 "pin", "unpin", "block", "unblock", "download"]
+                 "pin", "unpin", "block", "unblock", "download", "nominate"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -328,6 +351,18 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--wait", action="store_true")
     m.add_argument("--force", action="store_true")
     m.add_argument("--alias")
+    m.add_argument("--suite", choices=["core", "vision", "web", "embedding"],
+                   help="benchmark: run this suite (another suite only on a live model)")
+    m.add_argument("--file", help="nominate: the GGUF file in the repo")
+    m.add_argument("--revision", help="nominate: 40-char commit (default: the repo's current one)")
+    m.add_argument("--category", help="nominate: fast|general|coding|reasoning|embedding|reranking|vision|web")
+    m.add_argument("--active-params-b", type=float, help="nominate: active parameters of an MoE model (billions)")
+    m.add_argument("--template-kwargs", help='nominate: chat_template_kwargs JSON, e.g. \'{"reasoning_effort": "low"}\'')
+    m.add_argument("--arch", help='nominate: shape from the model card when the repo lacks it, JSON '
+                                   '{"num_layers", "num_kv_heads", "head_dim", "vocab_size"}')
+    m.add_argument("--context", type=int)
+    m.add_argument("--concurrency", type=int)
+    m.add_argument("--id", help="nominate: profile id (default: derived from repo and quant)")
     m.add_argument("--percent", type=float)
     m.add_argument("--to-version", type=int, dest="to_version")
     d = sub.add_parser("decision")

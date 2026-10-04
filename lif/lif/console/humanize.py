@@ -176,7 +176,7 @@ ROLE_BY_ALIAS = {r[1]: r for r in ROLES}
 # Category → alias the controller uses as a candidate's default target (controller/lifecycle.py CATEGORY_ALIAS).
 CATEGORY_ALIAS: dict[str, str] = {"fast": "local/fast", "general": "local/default", "coding": "local/code",
                                   "reasoning": "local/reasoning", "embedding": "local/embedding",
-                                  "reranking": "local/rerank", "vision": "local/vision"}
+                                  "reranking": "local/rerank", "vision": "local/vision", "web": "local/web"}
 DISCOVERY_CATEGORIES = ("fast", "general", "coding", "reasoning", "embedding", "reranking", "vision")
 
 

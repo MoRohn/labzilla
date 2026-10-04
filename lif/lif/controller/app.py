@@ -378,8 +378,18 @@ async def download(mid: str):
 
 
 @app.post("/v1/models/{mid}/benchmark")
-async def benchmark(mid: str):
-    return await _op(S.life.benchmark, mid, "operator")
+async def benchmark(mid: str, request: Request):
+    return await _op(S.life.benchmark, mid, "operator", (await _body(request)).get("suite"))
+
+
+@app.post("/v1/models/nominate")
+async def nominate(request: Request):
+    """Register one pinned GGUF as a CANDIDATE (e.g. a local/web model): discovery's gates, then the usual
+    download → benchmark → promote path."""
+    b = await _body(request)
+    if not isinstance(b.get("hf_repo"), str) or not isinstance(b.get("file"), str):
+        return JSONResponse({"error": "hf_repo and file are required"}, status_code=400)
+    return await _op(S.life.nominate, b, "operator")
 
 
 @app.post("/v1/models/{mid}/load")

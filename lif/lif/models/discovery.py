@@ -55,6 +55,11 @@ CATEGORIES: dict[str, dict[str, Any]] = {
                   "max_params_b": 9, "min_params_b": 1, "tasks": {"image-text-to-text", "text-generation", None},
                   "name_re": r"(?i)(?:\bvl|vl\b|vlm|vision|omni|llava|pixtral|minicpm-v|internvl|gemma-3)",
                   "name_re_bypass_tags": {"image-text-to-text"}, "requires_mmproj": True},
+    # Grounded answers (local/web). Operator-nominated only (`local-ai models nominate`): which models read
+    # sources well is measured by the web suite, not guessed from metadata, and MoE models (sized by their
+    # ACTIVE parameters, hardware_fit) are in range up to 36B total.
+    "web":       {"queries": [], "max_params_b": 36, "min_params_b": 3, "nominate_only": True,
+                  "tasks": {"text-generation", "image-text-to-text", None}},
 }
 
 # Category-specific priority weights (spec §21). Inputs are normalized to 0..1.
@@ -66,6 +71,7 @@ WEIGHTS = {
     "embedding": {"suitability": 0.30, "improvement": 0.20, "speed": 0.20, "memory": 0.15, "reliability": 0.15},
     "reranking": {"suitability": 0.30, "improvement": 0.20, "speed": 0.20, "memory": 0.15, "reliability": 0.15},
     "vision":    {"suitability": 0.35, "improvement": 0.25, "speed": 0.10, "memory": 0.15, "reliability": 0.15},
+    "web":       {"suitability": 0.40, "improvement": 0.30, "speed": 0.10, "memory": 0.05, "reliability": 0.15},
 }
 
 ADVANCE_SHORTLIST = 0.70      # P(benchmark)+P(candidate) that shortlists on Jev alone
@@ -234,7 +240,7 @@ class Discovery:
             return {"status": "disabled", "reason": "discovery disabled by operator"}
         if actor != "operator" and self.reg.setting("maintenance", False):
             return {"status": "disabled", "reason": "maintenance mode: autonomous discovery paused"}
-        cats = categories or list(CATEGORIES)
+        cats = categories or [c for c, v in CATEGORIES.items() if not v.get("nominate_only")]
         run_id = self.reg.start_discovery()
         self.running = run_id
         t0 = time.perf_counter()

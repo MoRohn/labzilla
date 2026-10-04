@@ -48,6 +48,10 @@ Check for Better Models (UI button · local-ai models refresh · POST /v1/models
  12  promote → PRODUCTION (old primary stays as the alias's fallback) · rollback any time
 ```
 
+### Operator nomination
+
+`local-ai models nominate <repo> --file <gguf> --category <cat>` (`POST /v1/models/nominate`) registers one specific GGUF as a CANDIDATE. It applies discovery's license, revision, toy-name and size gates plus hardware fit. The model then follows the normal download → benchmark → promote path. Category `web` (alias `local/web`) is nomination-only and is benchmarked on `evals/web.yaml` with its own policy. See [WEB_GROUNDING.md](WEB_GROUNDING.md#promoting-a-model-into-localweb). Mixture-of-experts models pass `--active-params-b`: decode speed is estimated from the active weights, and memory from all of them.
+
 ### Discovery categories (`lif/models/discovery.py`)
 
 | Category | Search | Params (B) | Alias |

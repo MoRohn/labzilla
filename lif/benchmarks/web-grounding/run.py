@@ -68,6 +68,10 @@ def arms() -> dict[str, str]:
     return out
 
 
+def arm_kwargs() -> dict[str, dict]:
+    return json.loads(os.environ.get("ARM_KWARGS") or "{}")
+
+
 def score(text: str, expect: list[str], grounded: bool) -> dict:
     return {"fact": all(re.search(p, text) for p in expect), "cite": bool(re.search(r"\[\d+\]", text)) or not grounded,
             "clean": not wg.is_disclaimer(text) and not HEDGE.search(text)}
@@ -98,10 +102,12 @@ async def main() -> None:
             for name, url in models.items():
                 await wait_for_capacity(http)
                 t = time.perf_counter()
-                # As the gateway sends it: Qwen3 hybrids answer without a thinking pass (profile chat_template_kwargs).
-                r = await http.post(f"{url}/v1/chat/completions", json={"messages": msgs, "max_tokens": 256,
+                # As the gateway sends it (profile chat_template_kwargs): Qwen3 hybrids without a thinking pass;
+                # other templates via ARM_KWARGS='{"gpt-oss-20b": {"reasoning_effort": "low"}}'.
+                kw = arm_kwargs().get(name, {"enable_thinking": False})
+                r = await http.post(f"{url}/v1/chat/completions", json={"messages": msgs, "max_tokens": 512,
                                                                         "temperature": 0.2,
-                                                                        "chat_template_kwargs": {"enable_thinking": False}})
+                                                                        "chat_template_kwargs": kw})
                 ms = (time.perf_counter() - t) * 1000
                 d = r.json()
                 text = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
