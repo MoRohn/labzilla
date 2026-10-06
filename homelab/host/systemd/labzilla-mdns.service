@@ -3,16 +3,18 @@
 # Install (user unit; linger keeps it running without a login session):
 #   cp homelab/host/systemd/labzilla-mdns.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload && systemctl --user enable --now labzilla-mdns
-# The address is read at start from LABZILLA_MDNS_IFACE (DHCP can change it; the unit restarts on failure).
+# The script (homelab/host/labzilla-mdns.sh, run from the repo checkout at ~/labzilla) waits for an
+# IPv4 on LABZILLA_MDNS_IFACE, publishes it, and republishes whenever the name stops resolving to the
+# interface's current address (boot-time hangs, DHCP changes, avahi restarts).
 [Unit]
 Description=Publish labzilla.local via mDNS (Labzilla Console)
 After=network-online.target
 
 [Service]
 Environment=LABZILLA_MDNS_IFACE=wlP9s9
-ExecStart=/bin/sh -c 'ip=$(ip -4 -o addr show dev "$LABZILLA_MDNS_IFACE" | awk "{print \\$4}" | cut -d/ -f1 | head -1); [ -n "$ip" ] || exit 1; exec /usr/bin/avahi-publish -a -R labzilla.local "$ip"'
+ExecStart=%h/labzilla/homelab/host/labzilla-mdns.sh
 Restart=always
-RestartSec=30
+RestartSec=10
 
 [Install]
 WantedBy=default.target

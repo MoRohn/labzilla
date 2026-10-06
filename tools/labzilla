@@ -114,6 +114,9 @@ doctor() {
       ok "$host resolves (mDNS)"
     else
       bad "$host doesn't resolve: install mDNS (Linux: libnss-mdns) or use --url https://labzilla.tiny-dgx.lan"
+      if [ -d "$ROOT/lif" ] && have systemctl; then
+        info "on the Labzilla host the name comes from the publisher: journalctl --user -u labzilla-mdns -n 20"
+      fi
       missing=1
     fi
   fi
