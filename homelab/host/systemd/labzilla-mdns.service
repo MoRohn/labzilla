@@ -1,8 +1,9 @@
 # Publishes labzilla.local on the LAN via mDNS (avahi) so phones can open the Labzilla Console
 # without DNS or /etc/hosts. No sudo: avahi-publish talks to avahi-daemon over D-Bus as this user.
-# Install (user unit; linger keeps it running without a login session):
-#   cp homelab/host/systemd/labzilla-mdns.service ~/.config/systemd/user/
-#   systemctl --user daemon-reload && systemctl --user enable --now labzilla-mdns
+# Install (user unit; linger keeps it running without a login session). Enabling by path symlinks
+# this file, so repo edits apply after `systemctl --user daemon-reload && systemctl --user restart labzilla-mdns`
+# (Argo CD doesn't manage host units):
+#   systemctl --user enable --now "$PWD/homelab/host/systemd/labzilla-mdns.service"
 # The script (homelab/host/labzilla-mdns.sh, run from the repo checkout at ~/labzilla) waits for an
 # IPv4 on LABZILLA_MDNS_IFACE, publishes it, and republishes whenever the name stops resolving to the
 # interface's current address (boot-time hangs, DHCP changes, avahi restarts).
