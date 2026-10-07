@@ -571,6 +571,8 @@ SERVICE_NAMES: dict[str, str] = {
     # ai-serving deployments owned by the memory guard (not BLERBZ's own GPU embedder, which is a gpusched resident)
     "tier0": "Main CPU model server", "tier0-small": "Small backup model server",
     "embedding": "LIF embedding service",
+    # the earning system (namespace earn; ~/arbies), watched read-only
+    "earn": "Earning system", "earn-synth": "Earn forecast worker", "earn-backup": "Earn nightly backup",
 }
 
 
@@ -599,6 +601,13 @@ ALERTS: dict[str, str] = {
     "LIFSQLiteBackupFailed": "The nightly database backup failed",
     "NodeMemoryMajorPagesFaults": "The machine is swapping memory heavily",
     "HomelabGpuReserveBreached": "The GPU memory reserve was breached",
+    # earn-alerts (namespace earn). Their annotations point at the removed Earn page; System → Services/Logs replace it.
+    "EarnDown": "The earning system isn't reporting",
+    "EarnNotSafeToTrade": "The earning system isn't trading (stopped, or a safety check failed)",
+    "EarnUnresolvedOrders": "The earning system has orders in an unknown state",
+    "EarnFeedStale": "An earning-system market feed is stale",
+    "EarnLoopFailing": "An earning-system loop keeps failing",
+    "EarnRiskTripOpen": "An earning-system safety stop needs review",
 }
 IGNORED_ALERTS = {"Watchdog", "InfoInhibitor"}
 

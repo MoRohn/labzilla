@@ -77,6 +77,14 @@ spec:
           value: /tmp/knowledge-index.db
         - name: LIF_CONSOLE_UNDERSTANDING       # explain API at /api/v1/* behind session auth (docs/UNDERSTANDING.md);
           value: "1"                            # its store is /data/understanding.db, next to LIF_CONSOLE_DB
+        # Earn on System (Services, Logs): the console reads earn's /api/status with EARN_READ_KEY only; it holds no
+        # Earn control key. Optional: without Secret earn-console, System shows Earn from Kubernetes metrics alone.
+        # earn's own ingress policy admits app=console from ai-system.
+        - name: LIF_EARN_URL
+          value: http://earn.earn.svc:8080
+        - name: LIF_EARN_READ_KEY
+          valueFrom:
+            secretKeyRef: {name: earn-console, key: LIF_EARN_READ_KEY, optional: true}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

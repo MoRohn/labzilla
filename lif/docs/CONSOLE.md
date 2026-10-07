@@ -51,6 +51,7 @@ The spec section numbers (§) below refer to the owner's UI/UX brief for the con
 | Hugging Face | Models → Check for better models (discovery) and candidate detail ("Source: Hugging Face") |
 | Benchmarks | Model detail and candidate comparison |
 | Logs | System → Logs (relevant events first); "View raw logs" note |
+| Earn (earning system, namespace `earn`) | System → Services, Logs, Storage and Alerts, read-only. See [Earn on System](#earn-on-system) |
 
 ### Routes
 
@@ -66,6 +67,25 @@ The spec section numbers (§) below refer to the owner's UI/UX brief for the con
 | `/system`, `/system/:tab` | Tabs: compute, services, storage, network, logs, settings | lazy |
 | `/connect`, `/trust` | Connect Mobile (QR, URL, devices); Trust this device | lazy |
 | `/setup`, `/login`, `/pair` | First run, sign in, phone side of pairing (no shell) | lazy |
+
+### Earn on System
+
+The earning system (`~/arbies`, namespace `earn`) runs on this node, so System watches it like a LIF workload.
+The console reads earn's `GET /api/status` with `LIF_EARN_READ_KEY` (Secret `earn-console`) every 30 s. It holds
+no Earn control key. Stop, resume, clearing a trip and acknowledging a rule change stay with earn's CLI (arbies RUNBOOK §3).
+
+| System tab | What appears | Source |
+|---|---|---|
+| Services: **Earning system** | `paused` when an operator stopped it, with the reason and the open safety-stop count. `attention` when it isn't started or isn't safe to trade, `degraded` when a loop is failing, otherwise `healthy` | `/api/status`, joined with kube-state |
+| Services: **Earn forecast worker** | Health of the `earn-synth` Deployment | kube-state |
+| Services: **Earn nightly backup** | Age of the last successful `earn-backup` run. Overdue after 26 h | `kube_cronjob_status_last_successful_time` |
+| Logs | Earn control-state changes, open safety stops, failed start-up checks, start-ups, failing loops, trip clears and rule acks. Routine order cancels are left out | `/api/status` |
+| Storage | The `earn-data` volume | kubelet volume stats |
+| Alerts | The `earn-alerts` rules in plain words | Prometheus |
+
+Without `LIF_EARN_URL`, Services still shows Earn from kube-state alone. If earn is unreachable or rejects the key,
+the Earn entry says so and Logs adds a note, and the LIF services and events are unaffected. Earn is not one of
+the core services, so an Earn outage raises no console notification. Its own alerts cover that.
 
 ## 3. Experience per mode (§3)
 

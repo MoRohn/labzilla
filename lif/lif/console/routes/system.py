@@ -14,7 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from lif.console import auth, poller, settings, upstream
+from lif.console import auth, earn, poller, settings, upstream
 from lif.console import humanize as hz
 from lif.console.contracts import (Alert, AlertsResponse, ComputeView, LogsResponse, ServiceHealth, SettingItem,
                                    SettingKey, SettingsView, SettingUpdate, StorageItem, StorageSummary, SystemStatus,
@@ -164,8 +164,8 @@ async def storage(_: User = _read) -> StorageSummary:
                                  note=f"{frac * 100:.0f}% free", tech=hz.tech(source="node exporter", mountpoint="/")))
     else:
         notes.append("Disk usage needs Prometheus, which isn't answering.")
-    vols = await upstream.prom('kubelet_volume_stats_used_bytes{namespace=~"ai-system|ai-batch|ai-serving"}')
-    caps = await upstream.prom('kubelet_volume_stats_capacity_bytes{namespace=~"ai-system|ai-batch|ai-serving"}')
+    vols = await upstream.prom('kubelet_volume_stats_used_bytes{namespace=~"ai-system|ai-batch|ai-serving|earn"}')
+    caps = await upstream.prom('kubelet_volume_stats_capacity_bytes{namespace=~"ai-system|ai-batch|ai-serving|earn"}')
     # Keyed by namespace too: two namespaces may each have a PVC with the same name.
     cap_by = {((s.get("metric") or {}).get("namespace"), (s.get("metric") or {}).get("persistentvolumeclaim")):
               upstream.prom_value([s]) for s in caps}
@@ -208,6 +208,12 @@ async def logs(level: str = Query("warning", pattern="^(error|warning|all)$"), q
     except UpstreamError as e:
         events = list(poller.snapshot().activity)
         note = f"{upstream.reason(e)}; showing the most recent cached events. {RAW_LOGS_NOTE}"
+    # Earn activity (System → Logs) comes from the poller's cached earn status, independent of the controller.
+    earn_st = poller.snapshot().raw.get("earn")
+    if isinstance(earn_st, dict):
+        events = sorted([*events, *earn.events(earn_st)], key=lambda e: e.ts, reverse=True)
+    elif settings.earn_url():
+        note = f"Earn's activity can't be read right now. {note}"
     allowed = _LEVELS[level]
     needle = q.strip().lower()
 

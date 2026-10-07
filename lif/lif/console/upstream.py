@@ -25,11 +25,11 @@ from lif.console.errors import HumanHTTPError, human
 
 LOG = log.get("lif.console.upstream")
 
-Svc = Literal["controller", "gateway", "batch", "prometheus", "knowledge"]
+Svc = Literal["controller", "gateway", "batch", "prometheus", "knowledge", "earn"]
 
 SERVICE_LABEL: dict[str, str] = {"controller": "Model control service", "gateway": "AI gateway",
                                  "batch": "Batch service", "prometheus": "Metrics history",
-                                 "knowledge": "Knowledge service"}
+                                 "knowledge": "Knowledge service", "earn": "Earning service"}
 # What the user loses while each upstream is unreachable (said once, here, for every error message).
 SERVICE_IMPACT: dict[str, str] = {
     "controller": "Model changes, discovery and history are unavailable; local AI keeps answering.",
@@ -37,6 +37,7 @@ SERVICE_IMPACT: dict[str, str] = {
     "batch": "Batch jobs can't be listed or controlled right now; queued work is kept.",
     "prometheus": "History and the memory breakdown are unavailable; live status still works.",
     "knowledge": "Knowledge search and decision records are unavailable.",
+    "earn": "Earning status can't be read here; the service keeps enforcing its own limits and safety stops.",
 }
 
 
@@ -79,6 +80,11 @@ def _base(svc: Svc) -> str:
         return settings.batch_url()
     if svc == "prometheus":
         return settings.prometheus_url()
+    if svc == "earn":
+        earn = settings.earn_url()
+        if not earn:
+            raise UpstreamError("earn", 0, "earning service not configured")
+        return earn
     url = settings.knowledge_url()
     if not url:
         raise UpstreamError("knowledge", 0, "knowledge service not configured")
@@ -109,6 +115,8 @@ def _headers(svc: Svc) -> dict[str, str]:
         h["Authorization"] = f"Bearer {key}"
     if svc == "gateway":
         h["X-LIF-Workload"] = "console"
+    if svc == "earn" and (earn_key := settings.earn_read_key()):
+        h["X-Earn-Key"] = earn_key          # read-only: /api/status. The console sends nothing else to earn.
     return h
 
 

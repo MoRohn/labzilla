@@ -24,7 +24,7 @@ from urllib.parse import quote, urlparse
 
 from lif.common import log
 from lif.console import humanize as hz
-from lif.console import settings, upstream
+from lif.console import earn, settings, upstream
 from lif.console.contracts import (ActivityEvent, Approval, ApprovalOption, BenchmarkSummary, CanaryInfo,
                                    ComputeView, ConnectionInfo, Health, JobsEvent, JobsSummary, ModelAction,
                                    ModelDeployment, ModelEvent, ModelRole, Notification, NotificationKind,
@@ -81,12 +81,13 @@ PROM_QUERIES: dict[str, str] = {
                'container!="",container!="POD"})',
     "temp": "max(node_thermal_zone_temp) or max(node_hwmon_temp_celsius)",
     "alerts": 'ALERTS{alertstate="firing"}',
-    "waiting": 'kube_pod_container_status_waiting_reason{namespace=~"ai-system|ai-serving|ai-batch"} == 1',
+    "waiting": 'kube_pod_container_status_waiting_reason{namespace=~"ai-system|ai-serving|ai-batch|earn"} == 1',
     "restarts": 'sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total'
-                '{namespace=~"ai-system|ai-serving|ai-batch"}[15m])) > 0',
-    "terminated": 'kube_pod_container_status_last_terminated_reason{namespace=~"ai-system|ai-serving|ai-batch"} == 1',
-    "deploy_avail": 'kube_deployment_status_replicas_available{namespace=~"ai-system|ai-serving|ai-batch"}',
-    "deploy_spec": 'kube_deployment_spec_replicas{namespace=~"ai-system|ai-serving|ai-batch"}',
+                '{namespace=~"ai-system|ai-serving|ai-batch|earn"}[15m])) > 0',
+    "terminated": 'kube_pod_container_status_last_terminated_reason{namespace=~"ai-system|ai-serving|ai-batch|earn"} == 1',
+    "deploy_avail": 'kube_deployment_status_replicas_available{namespace=~"ai-system|ai-serving|ai-batch|earn"}',
+    "deploy_spec": 'kube_deployment_spec_replicas{namespace=~"ai-system|ai-serving|ai-batch|earn"}',
+    "earn_backup_ok": 'kube_cronjob_status_last_successful_time{namespace="earn",cronjob="earn-backup"}',
 }
 
 
@@ -97,6 +98,13 @@ async def _prom_all() -> dict[str, list[dict[str, Any]]]:
     vals = await asyncio.gather(*(upstream.prom(PROM_QUERIES[k]) for k in rest))
     out.update(zip(rest, vals))
     return out
+
+
+async def _earn_status() -> Any:
+    """earn's /api/status (read key). None when no earn URL is configured: System then shows Earn from kube-state."""
+    if not settings.earn_url():
+        return None
+    return await upstream.get("earn", "/api/status", timeout=5.0)
 
 
 ACTIVITY_PAGE, ACTIVITY_MAX = 200, 2000      # the controller returns the NEWEST `limit` rows after `since`
@@ -139,6 +147,8 @@ SOURCES: dict[str, tuple[float, Callable[[], Awaitable[Any]]]] = {
     "human": (30, lambda: upstream.get("controller", "/v1/de/human", params={"status": "pending"})),
     "models": (30, lambda: upstream.get("controller", "/v1/models", timeout=8.0)),
     "knowledge": (60, lambda: upstream.get("knowledge", "/healthz", timeout=3.0)),
+    # status() is computed inside earn's trading event loop on every call: keep this slow
+    "earn": (30, _earn_status),
 }
 
 
@@ -758,6 +768,7 @@ def build_services(src: dict[str, _Src], ov: dict[str, Any], gpu: dict[str, Any]
     else:
         add("knowledge", *down("knowledge"), upstream.SERVICE_IMPACT["knowledge"], hz.tech(error=src["knowledge"].error),
             kube=("ai-system", "knowledge"))
+    _earn_services(add, src, prom)
     # model servers (one per routing profile), translated through the guard and kube-state
     profiles = _d(routing.get("profiles"))
     live = _d(caps.get("profiles"))
@@ -782,6 +793,30 @@ def build_services(src: dict[str, _Src], ov: dict[str, Any], gpu: dict[str, Any]
         add(f"model:{pid}", hs[0], hs[1], impact, raw, kube=kube if hs[0] != "paused" else None, logs=True)
         out[before] = out[before].model_copy(update={"name": name})
     return out
+
+
+def _earn_services(add: Callable[..., None], src: dict[str, _Src], prom: dict[str, list[dict[str, Any]]]) -> None:
+    """The earning system (namespace earn): its runtime, research worker and nightly backup."""
+    e = src["earn"]
+    kube = ("earn", "earn")
+    st = _d(e.value) if e.ok() else {}
+    if st:
+        h, summary, impact, raw = earn.service(st)
+        add("earn", h, summary, impact, raw, kube=kube)
+    elif settings.earn_url() and e.exc is not None and e.exc.unauthorized:
+        add("earn", "attention", "Not connected: the console's Earn read key is missing or was rejected",
+            "Earn's trading state can't be shown; its pods are still watched.", hz.tech(error=e.error), kube=kube)
+    elif settings.earn_url() and e.attempt_ts:
+        add("earn", "offline", "Not answering", upstream.SERVICE_IMPACT["earn"], hz.tech(error=e.error), kube=kube)
+    elif (k := _kube(prom, *kube)) is not None:
+        add("earn", k[0], k[1], None if k[0] == "healthy" else upstream.SERVICE_IMPACT["earn"], k[2])
+    if (k := _kube(prom, "earn", "earn-synth")) is not None:
+        add("earn-synth", k[0], "Running" if k[0] == "healthy" else k[1],
+            None if k[0] == "healthy" else "Earn's offline price forecasts pause; trading is unaffected.", k[2])
+    if prom.get("earn_backup_ok") is not None and (k := _kube(prom, *kube)) is not None:
+        h, summary, raw = earn.backup(upstream.prom_value(prom["earn_backup_ok"]), time.time())
+        add("earn-backup", h, summary, "Restore would lose more than a day of Earn's ledger." if h != "healthy" else None,
+            raw)
 
 
 def build_approvals(human: Any) -> list[Approval]:
@@ -924,7 +959,8 @@ def build(now: float) -> Snapshot:
     raw = {"health": health_v, "gpu": gpu, "overview": ov, "routing": routing, "capabilities": caps,
            "batch_stats": _d(ov.get("batch")), "settings": settings_, "memory_guard": guard, "tasks": tasks,
            "models": models_v.get("models") if isinstance(models_v.get("models"), list) else [],
-           "human": src["human"].value, "prom": prom, "alerts": alerts, "activity_rows": rows}
+           "human": src["human"].value, "prom": prom, "alerts": alerts, "activity_rows": rows,
+           "earn": src["earn"].value if src["earn"].ok() else None}
     return Snapshot(status=status, compute=compute, roles=roles, deployments=deployments, activity=activity,
                     services=services, approvals=approvals, jobs=jobs, raw=raw, errors=errors, updated_at=now)
 
