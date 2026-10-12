@@ -1,0 +1,16 @@
+# Transitive pins for the chatterbox image (versions resolved on 2026-10-12, NGC pytorch 25.11 base).
+# torch itself is pinned separately to NGC's build (/etc/pip-torch.txt).
+huggingface_hub==1.33.0
+hf-xet==1.7.0
+tokenizers==0.22.1
+safetensors==0.6.2
+protobuf==6.33.0
+ml_dtypes==0.5.3
+antlr4-python3-runtime==4.9.3
+future==1.0.0
+click==8.5.0
+regex==2025.11.3
+PyYAML==6.0.3
+pydantic==2.12.4
+anyio==4.11.0
+starlette==0.48.0

@@ -1,0 +1,14 @@
+# Chatterbox TTS (docs/tts.md). Secrets tts-auth and gpusched-token and the gpusched-gate
+# ConfigMap are created by scripts/install-tts.sh, not stored in git.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tts
+resources:
+  - pvc.yaml
+  - rbac.yaml
+  - api.yaml
+  - networkpolicy.yaml
+  - ingress.yaml
+configMapGenerator:
+  - name: tts-worker-job          # the API creates GPU worker Jobs from this template
+    files: [worker-job.yaml]

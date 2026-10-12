@@ -1,0 +1,12 @@
+# https://tts.<tailnet>.ts.net: tailnet only, bearer token required (docs/tts.md).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: tts}
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: tts
+      port: {number: 80}
+  tls:
+    - hosts: [tts]

@@ -1,0 +1,85 @@
+# TTS API + work queue. CPU-only: it never holds a gpusched lease. It starts GPU worker Jobs
+# (worker-job.yaml) when work is queued, and a CPU fallback subprocess for interactive requests
+# the GPU can't serve; that subprocess is why the memory limit is 9 GiB (engine RSS 6.4 GiB, n=6, 2026-10-12).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tts-api
+  labels: {app: tts-api}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}            # one queue only
+  selector: {matchLabels: {app: tts-api}}
+  template:
+    metadata:
+      labels: {app: tts-api}
+    spec:
+      serviceAccountName: tts-api
+      enableServiceLinks: false
+      securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      volumes:
+        - {name: models, persistentVolumeClaim: {claimName: tts-models}}
+        - {name: auth, secret: {secretName: tts-auth, defaultMode: 0440}}
+        - {name: worker-job, configMap: {name: tts-worker-job}}
+        - {name: tmp, emptyDir: {sizeLimit: 1Gi}}
+      initContainers:
+        - name: fetch-weights           # idempotent; pinned revision (image tts/__init__.py)
+          image: 127.0.0.1:5000/tts/chatterbox:20261012-1433
+          command:
+            - python
+            - -c
+            - |
+              from huggingface_hub import snapshot_download
+              from tts import MODEL_REPO, MODEL_REVISION
+              try:
+                  p = snapshot_download(MODEL_REPO, revision=MODEL_REVISION, local_files_only=True)
+              except Exception:
+                  p = snapshot_download(MODEL_REPO, revision=MODEL_REVISION)
+              print("weights at", p)
+          env: [{name: HOME, value: /tmp}]
+          volumeMounts: [{name: models, mountPath: /models/hf}, {name: tmp, mountPath: /tmp}]
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: "2", memory: 1Gi}
+      containers:
+        - name: api
+          image: 127.0.0.1:5000/tts/chatterbox:20261012-1433
+          command: ["python", "-m", "tts.api"]
+          env:
+            - {name: HOME, value: /tmp}
+            - {name: HF_HUB_OFFLINE, value: "1"}
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+            - {name: TTS_CPU_THREADS, value: "8"}
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: worker, containerPort: 8081}
+          volumeMounts:
+            - {name: models, mountPath: /models/hf, readOnly: true}
+            - {name: auth, mountPath: /var/run/tts, readOnly: true}
+            - {name: worker-job, mountPath: /etc/tts, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: "8", memory: 9Gi}
+          readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 30, failureThreshold: 4}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: tts}
+spec:
+  selector: {app: tts-api}
+  ports: [{name: http, port: 80, targetPort: http}]
+---
+# Cluster-internal: GPU workers pull tasks here. Not behind the ingress.
+apiVersion: v1
+kind: Service
+metadata: {name: tts-worker}
+spec:
+  selector: {app: tts-api}
+  ports: [{name: worker, port: 8081, targetPort: worker}]

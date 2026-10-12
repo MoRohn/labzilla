@@ -1,0 +1,12 @@
+# The worker port (8081) is for pods in this namespace only. The API port (8080) is reached by
+# the Tailscale ingress proxy and still needs the API token.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: tts-api}
+spec:
+  podSelector: {matchLabels: {app: tts-api}}
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{port: 8080}]
+    - from: [{podSelector: {}}]
+      ports: [{port: 8081}]

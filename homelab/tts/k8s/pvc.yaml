@@ -1,0 +1,8 @@
+# Hugging Face cache for chatterbox-turbo (3.8 GiB at the pinned revision). Re-downloadable, so no backup.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: tts-models}
+spec:
+  accessModes: [ReadWriteOnce]      # single node: the API pod and GPU worker pods share it
+  storageClassName: local-path
+  resources: {requests: {storage: 10Gi}}
