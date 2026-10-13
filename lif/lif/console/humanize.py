@@ -26,7 +26,17 @@ HEALTH_LABEL: dict[Health, str] = {"healthy": "Healthy", "busy": "Busy", "degrad
                                    "unknown": "Unknown"}
 
 # gpusched keeps an 8 GiB MemAvailable headroom for its own admissions (config/lif.yaml memory_guard
-# comment); below it the box is genuinely tight whatever the BLERBZ state says.
+# comment); below it the box is genuinely tight whatever an external workload is doing.
+
+
+def _wl_name() -> str:
+    from lif.gpu import workload
+    return workload.display_name()
+
+
+def _wl_on() -> bool:
+    from lif.gpu import workload
+    return workload.enabled()
 MEM_HEADROOM_MIB = 8192
 GPUSCHED_STALE_SEC = 30          # gpusched.stale_after_sec: older data is treated as fail-safe IMMINENT
 
@@ -204,21 +214,21 @@ def role_cause(reason: str | None, *, fallback: bool, degraded: bool, shed: bool
         pct = f"{m.group(1)}% of" if m else "a share of"
         return "canary", f"Trialling a new model on {pct} requests"
     if shed:
-        return "shed_by_memory_guard", "Main model paused to free memory for BLERBZ"
+        return "shed_by_memory_guard", f"Main model paused to free memory for {_wl_name()}"
     if "promoted to local/web yet" in low:
         return "not_deployed", "No dedicated model yet: the Balanced model answers with web results"
     if low.startswith("no local model is deployed") or "no local model is deployed" in low:
         return "not_deployed", "No model is installed for this role"
     # The router appends "(GPU reserved for the primary workload)" to every size-floor message, so a floor
-    # is matched before the yield phrases and is never reported as BLERBZ's doing.
+    # is matched before the yield phrases and is never reported as the primary workload's doing.
     f = _FLOOR.search(r)
     if f and not fallback:
         return "below_quality_floor", (f"Running on a smaller model than this role expects "
                                        f"({_trim(f.group(2))}B instead of {_trim(f.group(1))}B or more)")
     if any(k in low for k in _YIELD):
         if "latency budget" in low:
-            return "yielded_to_primary", "Switched to a faster model while BLERBZ is running"
-        return "yielded_to_primary", "Main model paused while BLERBZ is running; using a backup"
+            return "yielded_to_primary", f"Switched to a faster model while {_wl_name()} is running"
+        return "yielded_to_primary", f"Main model paused while {_wl_name()} is running; using a backup"
     if low.startswith("all models for"):
         return "primary_unavailable", "All models for this role are offline"
     if low.startswith("upstream_error on"):
@@ -238,7 +248,7 @@ def _trim(x: str) -> str:
     return x[:-2] if x.endswith(".0") else x
 
 
-# ── BLERBZ (the primary workload) from the gpusched snapshot (gpu/state.py) ────────────────────
+# ── primary workload from the gpusched snapshot (gpu/state.py) ──────────────────────────────────
 
 def blerbz(snapshot: dict[str, Any]) -> tuple[BlerbzState, str, str]:
     """Controller /v1/gpu snapshot → (state, label, one-sentence reason).
@@ -251,25 +261,26 @@ def blerbz(snapshot: dict[str, Any]) -> tuple[BlerbzState, str, str]:
     state = str(snapshot.get("state") or "").upper()
     reason = str(snapshot.get("reason") or "")
     age = num(snapshot.get("age_sec"))
+    name = _wl_name()
     if not snapshot.get("reachable", True) or "unreachable" in reason or (age is not None and age > GPUSCHED_STALE_SEC) \
             or "stale" in reason or "no data yet" in reason:
         return ("unknown", "Unknown",
-                "Labzilla can't see the GPU scheduler, so it holds background work as if BLERBZ were running.")
+                f"Labzilla can't see the GPU scheduler, so it holds background work as if {name} were running.")
     if snapshot.get("production_live"):
-        return "busy", "Generating", "GPU reserved for BLERBZ video generation."
+        return "busy", "Running", f"GPU reserved for {name}."
     residents = snapshot.get("residents_loaded") or {}
     if isinstance(residents, dict) and any(v is False for v in residents.values()) or "reloading" in reason:
-        return "busy", "Reloading", "BLERBZ is reloading its models; local AI runs slower until it finishes."
+        return "busy", "Reloading", f"{name} is reloading its models; local AI runs slower until it finishes."
     if state == "IMMINENT":
-        return "reserved", "Reserved", "GPU held for BLERBZ; local AI runs one request at a time."
+        return "reserved", "Reserved", f"GPU held for {name}; local AI runs one request at a time."
     if state == "HIGH":
-        return "imminent", "Likely soon", "BLERBZ is likely to start within the hour; evaluations are deferred."
+        return "imminent", "Likely soon", f"{name} is likely to start within the hour; evaluations are deferred."
     if state == "MODERATE":
         if "no forecast" in reason:
-            return "idle", "Idle", "BLERBZ is idle (no forecast available for the next hour)."
-        return "idle", "Idle", "BLERBZ is idle but may start soon."
+            return "idle", "Idle", f"{name} is idle (no forecast available for the next hour)."
+        return "idle", "Idle", f"{name} is idle but may start soon."
     if state == "LOW":
-        return "idle", "Idle", "BLERBZ is idle; production is unlikely in the next hour."
+        return "idle", "Idle", f"{name} is idle; production is unlikely in the next hour."
     return "unknown", "Unknown", "GPU scheduler reported an unrecognised state."
 
 
@@ -301,9 +312,9 @@ def job_state(status: str, reason: str | None) -> tuple[JobStatus, str, bool]:
     if "fail-safe" in r or "unreachable" in r or "stale" in r:
         return "waiting", "Waiting: GPU status unknown", True
     if "imminent" in r or "primary workload" in r and "high" not in r:
-        return "waiting", "Waiting for BLERBZ", True
+        return "waiting", f"Waiting for {_wl_name()}", True
     if "high" in r and "defer" in r:
-        return "waiting", "Deferred until BLERBZ is quiet", True
+        return "waiting", f"Deferred until {_wl_name()} is quiet", True
     if r.startswith("waiting"):
         return "waiting", "Waiting for capacity", True
     if s == "running":
@@ -333,9 +344,9 @@ def job_reason(reason: str | None) -> str | None:
     if "fail-safe" in r or "unreachable" in r or "stale" in r:
         return "GPU scheduler status is unknown, so work is held to be safe."
     if "imminent" in r:
-        return "GPU reserved for BLERBZ video generation."
+        return f"GPU reserved for {_wl_name()}."
     if "high" in r and "defer" in r:
-        return "BLERBZ is likely to start soon; low-priority work runs later."
+        return f"{_wl_name()} is likely to start soon; low-priority work runs later."
     if "paused by owner" in r:
         return "Paused by its owner."
     if "deadline" in r:
@@ -491,12 +502,18 @@ ACTIVITY: dict[str, _Spec] = {
     "memory_guard_shed": ("system", "warning", _shed_title("Paused"), _shed_detail, lambda r: "/system/compute"),
     "memory_guard_reshed": ("system", "warning", _shed_title("Paused"), _shed_detail, lambda r: "/system/compute"),
     "memory_guard_restore": ("system", "success", _shed_title("Resumed"), _shed_detail, lambda r: "/system/compute"),
-    "blerbz_state": ("system", "info", lambda r: f"BLERBZ status: {blerbz({'state': r.get('subject')})[1].lower()}",
+    "blerbz_state": ("system", "info", lambda r: f"{_wl_name()} status: {blerbz({'state': r.get('subject')})[1].lower()}",
                      _none, lambda r: "/system/compute"),
-    "blerbz_takeover": ("system", "info", lambda r: "BLERBZ started: local AI stepped back", _none,
+    "workload_state": ("system", "info", lambda r: f"{_wl_name()} status: {blerbz({'state': r.get('subject')})[1].lower()}",
+                       _none, lambda r: "/system/compute"),
+    "blerbz_takeover": ("system", "info", lambda r: f"{_wl_name()} started: local AI stepped back", _none,
                         lambda r: "/system/compute"),
-    "blerbz_release": ("system", "success", lambda r: "BLERBZ finished: local AI back to normal", _none,
+    "workload_takeover": ("system", "info", lambda r: f"{_wl_name()} started: local AI stepped back", _none,
+                          lambda r: "/system/compute"),
+    "blerbz_release": ("system", "success", lambda r: f"{_wl_name()} finished: local AI back to normal", _none,
                        lambda r: "/system/compute"),
+    "workload_release": ("system", "success", lambda r: f"{_wl_name()} finished: local AI back to normal", _none,
+                         lambda r: "/system/compute"),
     "controller_started": ("system", "info", lambda r: "Model control service restarted", _none, lambda r: "/system/services"),
     "setting_changed": ("system", "info", _setting_title, _none, lambda r: "/system/settings"),
 }
@@ -511,6 +528,11 @@ def activity(row: dict[str, Any]) -> ActivityEvent | None:
     if not isinstance(row, dict):
         return None
     kind = str(row.get("kind") or "")
+    # Workload transitions are noise while that integration is off, so a standalone console
+    # does not grow a feed of status lines for a workload nobody configured.
+    if not _wl_on() and kind in ("blerbz_state", "workload_state", "blerbz_takeover", "workload_takeover",
+                                 "blerbz_release", "workload_release"):
+        return None
     d = _d(row)
     if kind == "state_changed" and {str(d.get("frm")), str(d.get("to"))} <= _NOISE_STATES:
         return None
@@ -568,7 +590,7 @@ SERVICE_NAMES: dict[str, str] = {
     "gateway": "AI gateway", "controller": "Model control service", "batch": "Batch service",
     "decision": "Decision service", "knowledge": "Knowledge service", "prometheus": "Metrics history",
     "gpusched": "GPU scheduler",
-    # ai-serving deployments owned by the memory guard (not BLERBZ's own GPU embedder, which is a gpusched resident)
+    # ai-serving deployments owned by the memory guard (not an external GPU embedder, which is a gpusched resident)
     "tier0": "Main CPU model server", "tier0-small": "Small backup model server",
     "embedding": "LIF embedding service",
     # the earning system (namespace earn; ~/arbies), watched read-only
@@ -636,8 +658,8 @@ def local_ai(gateway_health: dict[str, Any] | None, roles: list[ModelRole], bler
     bal = by.get("balanced")
     if bal and bal.fallback_active and bal.cause != "canary":
         return "degraded", "Local AI on fallback model"
-    if blerbz_state == "busy":
-        return "busy", "Local AI Ready · slower while BLERBZ runs"
+    if blerbz_state == "busy" and _wl_on():
+        return "busy", f"Local AI Ready · slower while {_wl_name()} runs"
     return "healthy", "Local AI Ready"
 
 
@@ -645,7 +667,7 @@ def system_health(*, gateway_health: dict[str, Any] | None, controller_ok: bool,
                   mem_available_mib: float | None, shed: list[str], roles: list[ModelRole],
                   alerts: list[dict[str, Any]], maintenance: bool, batch_paused: bool,
                   decision: dict[str, Any] | None, not_connected: list[str] | None = None) -> tuple[Health, str, list[Reason]]:
-    """Overall health from several sources, never BLERBZ alone (it can read 'idle' while memory is tight).
+    """Overall health from several sources, never the primary workload alone (it can read 'idle' while memory is tight).
 
     Returns (health, headline, reasons) — reasons are (health, sentence) pairs, worst first, so the
     headline is always the most important one and the rest can be listed under it.
@@ -670,7 +692,7 @@ def system_health(*, gateway_health: dict[str, Any] | None, controller_ok: bool,
         reasons.append(("attention", sentence))
     if not controller_ok:
         reasons.append(("attention", "Model control service isn't answering"))
-    if isinstance(gpu, dict) and gpu and blerbz(gpu)[0] == "unknown":
+    if _wl_on() and isinstance(gpu, dict) and gpu and blerbz(gpu)[0] == "unknown":
         reasons.append(("attention", "GPU scheduler isn't reporting"))
     if isinstance(decision, dict) and decision.get("jev_breaker_open"):
         reasons.append(("degraded", "Decisions are using rules only (Jev paused after errors)"))
@@ -682,8 +704,8 @@ def system_health(*, gateway_health: dict[str, Any] | None, controller_ok: bool,
         if sev == "info":
             continue
         reasons.append(("attention" if sev == "error" else "degraded", alert_summary(name)))
-    if isinstance(gpu, dict) and blerbz(gpu)[0] == "busy":
-        reasons.append(("busy", "BLERBZ is using the GPU"))
+    if _wl_on() and isinstance(gpu, dict) and blerbz(gpu)[0] == "busy":
+        reasons.append(("busy", f"{_wl_name()} is using the GPU"))
     if batch_paused and not maintenance:
         reasons.append(("healthy", "Batch jobs are paused"))
     # de-duplicate sentences (an alert often restates a direct signal) keeping the worst first

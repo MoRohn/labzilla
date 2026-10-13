@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Create/refresh LIF Kubernetes Secrets. Idempotent; never prints secret values.
 #   * Jev key:        TYPE_SAFE_JEV_API_KEY from labzilla/.env.local (git-ignored)
-#   * gpusched token: the read-only `metrics` line of ~/.config/bnn/gpusched.token
+#   * gpusched token (optional): metrics line of $LIF_GPUSCHED_TOKEN_FILE, else
+#     ~/.config/gpusched.token, else the legacy ~/.config/bnn/gpusched.token.
+#     Missing token skips Secret lif-gpusched; Labzilla still starts.
 #   * gateway/admin keys: generated once into labzilla/secrets/lif-*.key (git-ignored, 0600)
 #   * console setup code: generated once into labzilla/secrets/lif-console-setup.code; the owner
 #     reads it on the host to create the first console admin (docs/CONSOLE.md → Deploy & access)
@@ -20,10 +22,21 @@ print("-".join("".join(secrets.choice(a) for _ in range(4)) for _ in range(4)))'
 # Let the shell parse .env.local (handles quoting) — never grep/cut a dotenv file.
 JEV=$(set -a; . ./.env.local >/dev/null 2>&1; printf '%s' "${TYPE_SAFE_JEV_API_KEY:-}")
 [ -n "$JEV" ] || { echo "TYPE_SAFE_JEV_API_KEY missing from .env.local" >&2; exit 1; }
-MTOK=$(awk -F: '$1=="metrics"{print $2}' ~/.config/bnn/gpusched.token)
-[ -n "$MTOK" ] || { echo "no metrics token in gpusched.token" >&2; exit 1; }
+TOKEN_FILE="${LIF_GPUSCHED_TOKEN_FILE:-}"
+if [ -z "$TOKEN_FILE" ]; then
+  if [ -s "$HOME/.config/gpusched.token" ]; then TOKEN_FILE="$HOME/.config/gpusched.token"
+  elif [ -s "$HOME/.config/bnn/gpusched.token" ]; then TOKEN_FILE="$HOME/.config/bnn/gpusched.token"
+  fi
+fi
+MTOK=""
+if [ -n "$TOKEN_FILE" ]; then
+  MTOK=$(awk -F: '$1=="metrics"{print $2}' "$TOKEN_FILE")
+  [ -n "$MTOK" ] || { echo "no metrics token in $TOKEN_FILE" >&2; exit 1; }
+else
+  echo "no gpusched token file: skipping ai-system/lif-gpusched (primary_workload stays off until you add one)"
+fi
 
-K_PROBE=$(gen probe); K_BATCH=$(gen batch); K_DEC=$(gen decision); K_BNN=$(gen bnn); K_OPS=$(gen operator)
+K_PROBE=$(gen probe); K_BATCH=$(gen batch); K_DEC=$(gen decision); K_WORKLOAD=$(gen workload); K_OPS=$(gen operator)
 K_ADMIN=$(gen admin); K_INTERNAL=$(gen internal); K_ENGINE=$(gen engine)   # engine = primary-workload vLLM LIF door
 # Labzilla Console: its own controller admin key and gateway client key (audited as `console`).
 K_CON_ADMIN=$(gen console-admin); K_CON_GW=$(gen console-gateway); C_SETUP=$(gen_code console-setup)
@@ -38,8 +51,10 @@ printf '%s' "$JEV" > "$tmp/TYPE_SAFE_JEV_API_KEY"
 MOONSHOT=$(set -a; . ./.env.local >/dev/null 2>&1; printf '%s' "${MOONSHOT_API_KEY:-}")
 EXTRA=()
 if [ -n "$MOONSHOT" ]; then printf '%s' "$MOONSHOT" > "$tmp/MOONSHOT_API_KEY"; EXTRA+=(--from-file="$tmp/MOONSHOT_API_KEY"); fi
-printf 'controller-probe:%s\nbatch:%s\ndecision-fabric:%s\nbnn:%s\noperator:%s\nconsole:%s\n' \
-  "$K_PROBE" "$K_BATCH" "$K_DEC" "$K_BNN" "$K_OPS" "$K_CON_GW" > "$tmp/LIF_GATEWAY_KEYS"
+printf 'controller-probe:%s\nbatch:%s\ndecision-fabric:%s\nworkload:%s\noperator:%s\nconsole:%s\n' \
+  "$K_PROBE" "$K_BATCH" "$K_DEC" "$K_WORKLOAD" "$K_OPS" "$K_CON_GW" > "$tmp/LIF_GATEWAY_KEYS"
+# Keep an existing external-workload key registered. Do not create lif-bnn.key on a new install.
+if [ -s "$SECRETS/lif-bnn.key" ]; then printf 'bnn:%s\n' "$(cat "$SECRETS/lif-bnn.key")" >> "$tmp/LIF_GATEWAY_KEYS"; fi
 if [ -n "$K_EARN" ]; then printf 'earn:%s\n' "$K_EARN" >> "$tmp/LIF_GATEWAY_KEYS"; fi
 printf 'operator:%s\nconsole:%s\n' "$K_ADMIN" "$K_CON_ADMIN" > "$tmp/LIF_ADMIN_KEYS"
 printf '%s' "$K_PROBE" > "$tmp/LIF_PROBE_KEY"
@@ -50,7 +65,7 @@ printf '%s' "$K_ENGINE" > "$tmp/LIF_ENGINE_KEY"
 printf '%s' "$K_CON_ADMIN" > "$tmp/LIF_CONSOLE_ADMIN_KEY"
 printf '%s' "$K_CON_GW" > "$tmp/LIF_CONSOLE_GATEWAY_KEY"
 printf '%s' "$C_SETUP" > "$tmp/LIF_CONSOLE_SETUP_CODE"
-printf '%s' "$MTOK" > "$tmp/token"
+if [ -n "$MTOK" ]; then printf '%s' "$MTOK" > "$tmp/token"; fi
 printf '%s' "$K_SEARX" > "$tmp/SEARXNG_SECRET"
 
 kubectl -n ai-system create secret generic lif-secrets --from-file="$tmp/TYPE_SAFE_JEV_API_KEY" \
@@ -60,12 +75,18 @@ kubectl -n ai-system create secret generic lif-secrets --from-file="$tmp/TYPE_SA
   --from-file="$tmp/LIF_CONSOLE_ADMIN_KEY" --from-file="$tmp/LIF_CONSOLE_GATEWAY_KEY" \
   --from-file="$tmp/LIF_CONSOLE_SETUP_CODE" "${EXTRA[@]}" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-kubectl -n ai-system create secret generic lif-gpusched --from-file="$tmp/token" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+if [ -n "$MTOK" ]; then
+  kubectl -n ai-system create secret generic lif-gpusched --from-file="$tmp/token" \
+    --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+fi
 kubectl -n ai-system create secret generic searxng --from-file="$tmp/SEARXNG_SECRET" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-echo "secrets applied: ai-system/lif-secrets, ai-system/lif-gpusched, ai-system/searxng"
-echo "keys on disk: $SECRETS/lif-{probe,batch,decision,bnn,operator,admin,console-admin,console-gateway}.key (the primary workload uses lif-bnn.key; the UI/CLI use lif-admin.key)"
+if [ -n "$MTOK" ]; then
+  echo "secrets applied: ai-system/lif-secrets, ai-system/lif-gpusched, ai-system/searxng"
+else
+  echo "secrets applied: ai-system/lif-secrets, ai-system/searxng (no lif-gpusched)"
+fi
+echo "keys on disk: $SECRETS/lif-{probe,batch,decision,workload,operator,admin,console-admin,console-gateway}.key (optional external workload: lif-workload.key; the UI/CLI use lif-admin.key)"
 echo "console setup code: $SECRETS/lif-console-setup.code (read it on the host when creating the first console admin)"
 echo "gateway and controller read their key lists only at startup: roll them out so the console keys work:"
 echo "  kubectl -n ai-system rollout restart deploy/gateway deploy/controller"

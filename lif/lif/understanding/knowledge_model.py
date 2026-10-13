@@ -300,7 +300,7 @@ Generate = Callable[[list[dict]], Awaitable[str]]
 
 class Truncated(Exception):
     """The model stopped at its token limit, so its JSON is incomplete. The gateway caps completions while the
-    primary workload is live (yield.max_tokens_blerbz), so this is expected, not a fault."""
+    primary workload is live (yield.max_tokens_busy), so this is expected, not a fault."""
 
 LLM_INSTRUCTIONS = """You build a knowledge model for an explanation. Return ONLY one JSON object, no prose.
 Schema (all ids lowercase-kebab, unique across the object):

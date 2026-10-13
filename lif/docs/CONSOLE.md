@@ -45,7 +45,7 @@ The spec section numbers (§) below refer to the owner's UI/UX brief for the con
 
 | Area | Where it appears |
 |---|---|
-| GPU / unified memory / BLERBZ | Home status block; System → Compute; command bar ("Why is the GPU busy?"); palette "Open GPU" |
+| GPU / unified memory / primary workload | Home status block; System → Compute; command bar ("Why is the GPU busy?"); palette "Open GPU" |
 | K3s / Kubernetes | System → Services (human health); raw pod/deployment state in Technical Details |
 | Decision Fabric (Jev) | Ask receipt (`DecisionBadge`); Agents → decision cycle runs and review tickets |
 | Hugging Face | Models → Check for better models (discovery) and candidate detail ("Source: Hugging Face") |
@@ -143,8 +143,8 @@ Deterministic rules (`lif/console/intent.py`) classify first; a local-model fall
 | "Check for better coding models" | `model_request` | Proposes "Check for better models: coding" (`POST /api/models/discovery`, models.discover), stating that it costs a few Jev calls |
 | "Check whether any better coding models were released" (§8) | `model_request` | Same as above (model-discovery workflow) |
 | "Check for better vision models" | `model_request` | Same, for vision models (`categories: ["vision"]`); its link opens Discovery with Vision ticked |
-| "Why is the GPU busy?" | `system_query` | Answers from the poller snapshot: BLERBZ state and reason, memory split, what AI serving holds. Link to System → Compute |
-| "Why did local/default fall back to local/fast?" (§8) | `system_query` | Answers from the role's `cause` / `cause_label` and fallback chain (for example, the default model was paused to free memory for BLERBZ). Link to the role |
+| "Why is the GPU busy?" | `system_query` | Answers from the poller snapshot: primary workload state and reason, memory split, what AI serving holds. Link to System → Compute |
+| "Why did local/default fall back to local/fast?" (§8) | `system_query` | Answers from the role's `cause` / `cause_label` and fallback chain (for example, the default model was paused to free memory for primary workload). Link to the role |
 | "Pause batch jobs" | `operational_command` | Proposes "Pause all batch jobs" (`POST /api/jobs/batch/pause-all`, jobs.control). Reversible, no confirmation, impact stated |
 | "What changed today?" | `system_query` | Today's activity, grouped (models, jobs, system, decisions) |
 | "Summarize current incidents" | `system_query` | Services that are not healthy, firing alerts, roles on fallback; "Nothing needs attention" when none |
@@ -158,7 +158,7 @@ The palette (Ctrl/Cmd+K) has the §50 entries (Ask Labzilla, Run Agent, Search K
 | Health | Words | Color + icon | Typical cause |
 |---|---|---|---|
 | `healthy` | Healthy / Ready | green, check | Everything answering |
-| `busy` | Busy | yellow, clock | BLERBZ generating, work queued, service starting |
+| `busy` | Busy | yellow, clock | primary workload generating, work queued, service starting |
 | `degraded` | Degraded | yellow, warning | Serving from a fallback or a smaller model |
 | `paused` | Paused | gray, pause ring | Paused by an operator or by the memory guard |
 | `attention` | Needs attention | red, warning | Something needs a person |
@@ -204,14 +204,14 @@ action button states its impact, the answer above it doesn't repeat it.
 | `OOMKilled` | Ran out of memory and restarted | attention |
 | Running, not Ready | Starting up | busy |
 | `Evicted` | Stopped to free resources on the host | attention |
-| Deployment scaled to 0 by the memory guard | Paused to free memory for BLERBZ | paused |
-| gpusched `LOW` / `MODERATE` | BLERBZ idle (may start soon) | healthy |
-| gpusched `HIGH` | BLERBZ likely within the hour; background work deferred | busy |
-| gpusched `IMMINENT` (production lease) | BLERBZ is generating; AI requests slowed | busy |
+| Deployment scaled to 0 by the memory guard | Paused to free memory for primary workload | paused |
+| gpusched `LOW` / `MODERATE` | primary workload idle (may start soon) | healthy |
+| gpusched `HIGH` | primary workload likely within the hour; background work deferred | busy |
+| gpusched `IMMINENT` (production lease) | primary workload is generating; AI requests slowed | busy |
 | gpusched unreachable or stale | Can't see the GPU scheduler; running in safe mode | attention |
 | Router fallback (chain index > 0) | Running on fallback model, with the cause in words | degraded |
 | Served model below the role's quality floor | Smaller than this role expects | degraded |
-| Batch reason `waiting: primary workload IMMINENT` | Waiting: GPU reserved for BLERBZ; resumes automatically | paused |
+| Batch reason `waiting: primary workload IMMINENT` | Waiting: GPU reserved for primary workload; resumes automatically | paused |
 | Batch reason `batch paused by operator` | Paused by an operator | paused |
 | Model `PRODUCTION` / `STANDBY` / `CANARY` | In use / Kept as backup / Trial: serving a share of traffic | healthy |
 | Model `CANDIDATE` / `STAGED` / `BENCHMARKING` | Shortlisted / Downloaded, awaiting benchmark / Being evaluated | unknown / busy |
@@ -222,8 +222,8 @@ action button states its impact, the answer above it doesn't repeat it.
 
 | Cause | Label pattern |
 |---|---|
-| `shed_by_memory_guard` | "Default model paused to free memory for BLERBZ" |
-| `yielded_to_primary` | "Slowed while BLERBZ is generating" |
+| `shed_by_memory_guard` | "Default model paused to free memory for primary workload" |
+| `yielded_to_primary` | "Slowed while primary workload is generating" |
 | `primary_unavailable` | "Default model isn't answering; using the fast model" |
 | `below_quality_floor` | "Serving a smaller model than this role expects" |
 | `canary` | "Trying a candidate on a share of requests" |
@@ -371,7 +371,7 @@ The status is the v1 target agreed in the architecture brief, and the integratio
 | 3 | USE / OBSERVE / OPERATE modes | Done | Ask + Mobile Gateway / Home + System / Models, Jobs, Settings | OPERATE needs admin; phones get safe operations |
 | 4 | Minimum information | Done | Design rule; Home = status block + cockpit (§6) | Changed 2026-10-01: the owner asked for an executive cockpit |
 | 5 | Compact left nav; technical areas contextual | Done | `shell/SideNav`, `shell/nav.ts` | See the table in section 2 |
-| 6 | Home command center | Done | `pages/home`, `GET /api/home` | Status block (eager), then the cockpit chunk (`Cockpit.tsx`, ~4.5 KB gz): KPI tiles (Ask answers, answer speed, first word p90, availability, free memory with the 8 GB margin, GPU load, AI requests, value estimate) with 6-hour inline-SVG trends where no data is a gap, never 0; recent conversations; attention full-width when something needs the owner, otherwise "Nothing needs you"; services; activity with repeats folded ("· 8×"). `/api/home` refreshes every 60 s while visible and on `thread` events; its shared upstream parts are cached (trends 60 s, value 120 s) and each part degrades with its own reason. "Agents running" counts synthesized runs (§22). Every resource row (GPU load, memory, BLERBZ) drills down to System → Compute and says when its data is out of date. Live state (who answers, GPU owner, reviews) is not shown once its upstream has been silent for three of its poll intervals (at least 30 s) |
+| 6 | Home command center | Done | `pages/home`, `GET /api/home` | Status block (eager), then the cockpit chunk (`Cockpit.tsx`, ~4.5 KB gz): KPI tiles (Ask answers, answer speed, first word p90, availability, free memory with the 8 GB margin, GPU load, AI requests, value estimate) with 6-hour inline-SVG trends where no data is a gap, never 0; recent conversations; attention full-width when something needs the owner, otherwise "Nothing needs you"; services; activity with repeats folded ("· 8×"). `/api/home` refreshes every 60 s while visible and on `thread` events; its shared upstream parts are cached (trends 60 s, value 120 s) and each part degrades with its own reason. "Agents running" counts synthesized runs (§22). Every resource row (GPU load, memory, primary workload) drills down to System → Compute and says when its data is out of date. Live state (who answers, GPU owner, reviews) is not shown once its upstream has been silent for three of its poll intervals (at least 30 s) |
 | 7 | Persistent command bar | Done | `shell/CommandBar`, `POST /api/command` | Desktop: bottom of the content column. Phone: above the bottom nav. On phone Home the gateway prompt replaces it and goes through the same resolver |
 | 8 | Command kinds | Partial | `intent.py` | Rules cover every §7/§8 example, in the command bar and in Ask's composer (Auto mode, short prompts). Other text falls back to "Ask Labzilla". No local-model classifier in v1 |
 | 9 | Ask screen with route, privacy, receipt | Done | `pages/ask`, `routes/ai.py` | Latency is measured by the console. The gateway's streaming metadata has no latency |
@@ -396,12 +396,12 @@ The status is the v1 target agreed in the architecture brief, and the integratio
 | 28 | Discovery with stages | Partial | `/models/discovery` | Upstream has no intra-run progress: the stage counts appear when the run finishes. "What to look for" picks categories, including Vision (`?category=vision` preselects); Models offers "Find a vision model" while none is installed. A role with no model yet (the first vision model) offers Promote instead of a trial |
 | 29 | Candidate comparison | Partial | `/models/candidates/:id` | Stability comes from benchmark errors only; no canary outcome metrics exist. "Ignore" hides the candidate on this device only (there is no backend ignore; blocking is an API-only release action in v1) |
 | 30 | Jobs combine all background work | Partial | `pages/jobs`, `routes/jobs.py` | Batch jobs are durable. Discovery, download and benchmark tasks are in controller memory and lost on restart. Scheduled work is static descriptors |
-| 31 | Resource-aware reasons | Done | `humanize.job_state` | "Paused — GPU reserved for BLERBZ — resumes automatically" |
+| 31 | Resource-aware reasons | Done | `humanize.job_state` | "Paused — GPU reserved for primary workload — resumes automatically" |
 | 32 | Knowledge as project memory | Partial | `pages/knowledge` | Read from the knowledge service (deployed 2026-10-01); the console shows public objects only and never the private repo. Recent changes come from object dates |
 | 33 | Single knowledge search | Partial | `/api/knowledge/search` | Public objects only. Incidents live in private knowledge, so "the last OOM incident" gets an honest "no public record" |
 | 34 | Decision record page | Done | `/knowledge/o/:key` | History is limited to what the object records. A record whose `selected` is a bare option token shows its title as the decision, with the token in brackets |
 | 35 | System consolidates infrastructure | Partial | `pages/system` | Tabs: Compute, Services, Storage, Network, Logs, Settings. Kubernetes is folded into Services, because RBAC cannot read ai-system pods |
-| 36 | Compute view | Partial | System → Compute, `ResourceBar` | GPU %, unified memory and the BLERBZ/AI/other split come from gpusched and Prometheus. Temperature: no GPU sensor is exported, so it shows "Not measured" |
+| 36 | Compute view | Partial | System → Compute, `ResourceBar` | GPU %, unified memory and the primary workload/AI/other split come from gpusched and Prometheus. Temperature: no GPU sensor is exported, so it shows "Not measured" |
 | 37 | Workload timeline | Done | `/api/system/timeline` | Prometheus `query_range`, whole clock hours. The controller's availability probes don't count as inference. An honest empty state when Prometheus is down |
 | 38 | Health language | Done | `humanize.py`, `StatusBadge` | Firing alerts are titled in words; the alert name is in Technical Details |
 | 39 | Notify only when action may be needed | Done | `Notification.kind` is limited to the §39/§100 list | |

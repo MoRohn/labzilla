@@ -10,9 +10,9 @@ Sources, unified into contracts.Job (id = '<source>:<native id>'):
   daily backup) plus the weekly automatic discovery when that setting is on. No next-run times are
   invented: the cluster exposes none to the console.
 
-Batch has no "waiting" state: a job blocked by BLERBZ stays queued/running and its `reason` starts with
-"waiting:". The mapping below turns that into status "waiting" with a reason a person understands
-("GPU reserved for BLERBZ production work — resumes automatically"); raw states stay in `tech`.
+Batch has no "waiting" state: a job blocked by an external workload stays queued/running and its
+`reason` starts with "waiting:". The mapping below turns that into status "waiting" with a reason a
+person understands ("GPU reserved for the primary workload — resumes automatically"); raw states stay in `tech`.
 
 Pause-all goes through controller settings (`batch_paused`) so the controller stays the source of truth.
 The controller computes `paused = batch_paused OR maintenance` from the request body only, so unpausing
@@ -306,7 +306,7 @@ async def job_action(job_id: str, action: str, user: User = Depends(auth.require
     if not job_id.startswith("batch:"):
         raise human(409, f"This job can't be {ACTION_VERB[action]}",
                     "Only batch jobs can be paused, resumed or cancelled. Model work runs to completion "
-                    "(and stops on its own if BLERBZ needs the GPU).", "Nothing was changed.",
+                    "(and stops on its own if the machine needs the GPU back).", "Nothing was changed.",
                     tech={"job": job_id, "action": action})
     job = await find(job_id)
     if job is None:

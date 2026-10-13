@@ -75,4 +75,4 @@ The `lif-backup` MinIO user can only read and write `lif-sqlite/`, not Longhorn'
 
 1. Delete `secrets/lif-*.key` and run `scripts/create-secrets.sh`.
 2. `kubectl -n ai-system rollout restart deploy`.
-3. Hand out the new keys (the primary workload: `lif-bnn.key`).
+3. Hand out the new keys (an optional external workload uses `lif-workload.key` when that integration is on).

@@ -1,5 +1,5 @@
 // §103–§105 as a first-time user would do them, without instructions: ask and see who answered, understand
-// a fallback, check the GPU and BLERBZ, pause a batch job, check for better models, approve a review,
+// a fallback, check the GPU, pause a batch job, check for better models, approve a review,
 // connect a phone and continue its conversation on the desktop. §62: an outage reads as a human message.
 import { devices, expect, test, type Page } from 'playwright/test';
 import { FAKE, STATE } from './env';
@@ -129,30 +129,32 @@ test('understand why AI fell back: Home explains, the role page shows the cause 
   await expect(result).toContainText(/1\.7B|backup|fallback/i);
 });
 
-test('check GPU load and what BLERBZ uses (System › Compute, §36)', async ({ page }) => {
+test('check GPU load without an external workload (System › Compute, §36)', async ({ page }) => {
   await setScenario('blerbz-busy');
   await page.goto('/system/compute');
   await waitReady(page);
   const main = page.locator('main');
-  await expect(main).toContainText(/GPU reserved for BLERBZ/, { timeout: 20_000 });
-  await expect(main).toContainText(/GPU load\s*\d+\s*%/);
-  await expect(main).toContainText(/BLERBZ[\s\S]{0,40}\d+(\.\d)?\s*GB/);
+  await expect(main).toContainText(/GPU load\s*\d+\s*%/, { timeout: 20_000 });
   await expect(main).toContainText(/\/\s*128(\.0)?\s*GB/);
-  await expectHumanText(page, 'compute (blerbz-busy)');
+  await expect(main).not.toContainText('BLERBZ');
+  await expect(main.getByRole('heading', { name: 'Primary workload' })).toHaveCount(0);
+  await expectHumanText(page, 'compute (external workload off)');
 
   // Batch work says why it waits and that it resumes by itself (§31).
   await page.goto('/jobs');
   await waitReady(page);
-  await expect(page.locator('main')).toContainText('GPU reserved for BLERBZ video generation');
+  await expect(page.locator('main')).toContainText('GPU reserved for Primary workload');
   await expect(page.locator('main')).toContainText('Resumes automatically');
+  await expect(page.locator('main')).not.toContainText('BLERBZ');
 
-  // "Why is the GPU busy?" from the command bar.
+  // "Why is the GPU busy?" from the command bar. The integration is off, so the answer is about this machine.
   const bar = page.locator('.lz-commandbar input');
   await bar.fill('Why is the GPU busy?');
   await bar.press('Enter');
   const result = page.getByRole('region', { name: 'Command result' });
   await expect(result).toBeVisible({ timeout: 10_000 });
-  await expect(result).toContainText('BLERBZ');
+  await expect(result).not.toContainText('BLERBZ');
+  await expect(result).toContainText(/GPU/);
 });
 
 test('pause a batch job and resume it (Jobs, §30, §31)', async ({ page }) => {
@@ -286,7 +288,8 @@ test('phone Home prompt resolves commands like the command bar, and pasted code 
   // A snapshot answer in a sheet, not a model-generated guess in Ask.
   const sheet = page.getByRole('dialog', { name: 'Labzilla' });
   await expect(sheet).toBeVisible({ timeout: 10_000 });
-  await expect(sheet).toContainText('BLERBZ');
+  await expect(sheet).not.toContainText('BLERBZ');
+  await expect(sheet).toContainText(/GPU/);
   await expect(page).toHaveURL(/\/$/);
   await page.keyboard.press('Escape');
 

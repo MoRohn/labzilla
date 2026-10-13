@@ -316,7 +316,7 @@ def catalog(user: User) -> list[AgentCatalogItem]:
         AgentCatalogItem(
             id="evaluator", name="Evaluator", runnable=eval_ok, why_not=eval_why, perm="models.operate",
             description="Benchmarks one candidate on a temporary test server and compares it with the model in "
-                        "use. Waits if BLERBZ needs the GPU or memory is short.",
+                        "use. Waits if the GPU or memory is short.",
             params=[AgentParam(key="candidate", label="Candidate model", type="candidate", required=True)]),
     ]
 
@@ -399,7 +399,7 @@ async def run_agent(req: AgentRunRequest, user: User = Depends(auth.current_user
     auth.audit(user, "agents.run", "evaluator", {"model": mid})
     already = (r or {}).get("status") == "already_running"
     return OkResponse(message=f"{_model(mid)} is already being benchmarked." if already else
-                      f"Benchmarking {_model(mid)}. It stops on its own if BLERBZ needs the GPU.")
+                      f"Benchmarking {_model(mid)}. It stops on its own if the machine needs the GPU back.")
 
 
 # ── approvals ─────────────────────────────────────────────────────────────────────────────────

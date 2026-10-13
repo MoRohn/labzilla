@@ -156,7 +156,7 @@
   version: v1
   type: choice
   data_class: PUBLIC
-  owner: bnn
+  owner: labzilla
   instructions: Classify the news story (headline and summary) into its primary topic.
   choices:
     world: international affairs, politics, conflicts, diplomacy, elections

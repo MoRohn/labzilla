@@ -85,9 +85,10 @@ def _series(result: list[dict[str, Any]]) -> dict[int, float]:
 
 
 def bucket_label(blerbz_pct: float | None, ai_pct: float | None, tasks: float | None, batch: float | None) -> str:
+    from lif.gpu import workload
     parts = []
     if blerbz_pct is not None and blerbz_pct >= 10:
-        parts.append("BLERBZ video")
+        parts.append(workload.display_name() if workload.enabled() else "GPU")
     if (tasks or 0) >= 1 or (ai_pct or 0) >= 5:
         parts.append("inference")
     if (batch or 0) >= 1:
@@ -124,7 +125,9 @@ async def timeline(hours: int = Query(12, ge=1, le=168), _: User = _read) -> Tim
         n = batch.get(t)
         buckets.append(TimelineBucket(start=t - 3600, end=t, label=bucket_label(bp, ap, tasks.get(t), n),
                                       blerbz_pct=bp, ai_pct=ap, batch_items=int(round(n)) if n is not None else None))
-    return TimelineResponse(hours=hours, buckets=buckets)
+    from lif.gpu import workload
+    return TimelineResponse(hours=hours, buckets=buckets, primary_enabled=workload.enabled(),
+                            primary_name=workload.display_name() if workload.enabled() else "")
 
 
 # ── storage ─────────────────────────────────────────────────────────────────────────────────
@@ -276,7 +279,7 @@ SETTINGS: dict[str, tuple[str, str, str, str, str | None, str, bool]] = {
     "jev_disabled": ("Turn off Jev decisions", "Decisions use built-in rules only.",
                      "Nothing is sent to Jev; routing and reviews use rules, which can be less accurate.", "toggle",
                      None, "system.settings", False),
-    "reserve_gpu_mib": ("Extra memory reserve", "Memory kept free for BLERBZ on top of the normal safety margin.",
+    "reserve_gpu_mib": ("Extra memory reserve", "Extra memory kept free on top of the normal safety margin.",
                         "The memory guard pauses optional AI services earlier, so local AI has less redundancy.",
                         "number", "MiB", "system.settings", False),
 }

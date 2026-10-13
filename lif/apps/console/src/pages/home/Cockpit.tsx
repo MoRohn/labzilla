@@ -76,7 +76,7 @@ function trendTile(t: Trend | undefined, hours: number, fallbackLabel: string, e
   );
 }
 
-function Kpis({ h }: { h: HomeOverview }) {
+function Kpis({ h, workload }: { h: HomeOverview; workload: string }) {
   const tr = Object.fromEntries(h.trends.map((t) => [t.key, t]));
   const a = h.ask;
   const av = h.availability;
@@ -117,8 +117,13 @@ function Kpis({ h }: { h: HomeOverview }) {
               : `7 days ${fmt.percent(av.last_7d, { digits: 1 })} · target ${fmt.percent(av.target)}`
           }
         />
-        {trendTile(tr.mem_free, h.trends_hours, 'Free memory', { sub: 'Shared by the GPU, BLERBZ and Labzilla' })}
-        {trendTile(tr.gpu, h.trends_hours, 'DGX GPU load', { sub: 'BLERBZ has priority on the GPU', bad: 'high' })}
+        {trendTile(tr.mem_free, h.trends_hours, 'Free memory', {
+          sub: workload ? `Shared by the GPU, ${workload} and Labzilla` : 'Shared by the GPU and Labzilla',
+        })}
+        {trendTile(tr.gpu, h.trends_hours, 'DGX GPU load', {
+          sub: workload ? `${workload} has priority when it is running` : 'GPU load on this machine',
+          bad: 'high',
+        })}
         {trendTile(tr.requests, h.trends_hours, 'AI requests', {
           sub: v?.requests != null ? `${fmt.num(v.requests)} in 24 h (incl. health checks)` : 'Includes health checks',
           bad: 'high',
@@ -222,7 +227,7 @@ export default function Cockpit({ status }: { status: SystemStatus }) {
   return (
     <>
       {h ? (
-        <Kpis h={h} />
+        <Kpis h={h} workload={status.resource.primary_enabled ? status.resource.primary_name || 'Primary workload' : ''} />
       ) : home.error ? (
         <HumanErrorCard error={home.error} onRetry={() => void home.refresh()} compact />
       ) : (

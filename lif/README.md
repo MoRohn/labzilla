@@ -31,7 +31,7 @@ DETERMINISTIC CODE → JEV DECISION FABRIC → LOCAL FAST MODEL → LOCAL REASON
 ## Quickstart for application developers
 
 ```bash
-KEY=$(cat ~/labzilla/secrets/lif-bnn.key)          # or another gateway key
+KEY=$(cat ~/labzilla/secrets/lif-admin.key)        # or another gateway key, such as lif-workload.key
 curl -sk https://ai.tiny-dgx.lan/v1/chat/completions \
   -H "Authorization: Bearer $KEY" \
   -H "X-LIF-Data-Class: CONFIDENTIAL" -H "X-LIF-Workload: my-app" \

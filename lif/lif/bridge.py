@@ -4,7 +4,7 @@ The primary workload publishes its LLM container only on 127.0.0.1 (never the LA
 host's loopback, so this tiny TCP relay runs as a hostNetwork pod and listens on the K3s
 cni0 gateway address only (10.42.0.1 — reachable from pods, not from the LAN):
 
-    pod → 10.42.0.1:18102 → 127.0.0.1:8102 (bnn-llm-server LIF door, bearer key, low priority)
+    pod → 10.42.0.1:18102 → 127.0.0.1:8102 (host engine's LIF door, bearer key, low priority)
 
 The LIF door itself still enforces the key, so this relay adds reachability, not access.
 cni0 may not exist yet at boot; the bind is retried until it does.

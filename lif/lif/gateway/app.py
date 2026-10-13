@@ -39,6 +39,7 @@ from lif.decision.fabric import DecisionFabric
 from lif.decision.providers import JevProvider
 from lif.decision.rules import rules
 from lif.decision.types import load_definitions
+from lif.gpu import workload
 from lif.gpu.state import BlerbzState, GpuStateWatcher
 from lif.policy import engine as policy
 from lif.routing.router import AUTO_ALIAS, ROUTE_TO_ALIAS, VISION_ALIAS, NoRoute, NotSupported, Route, Router
@@ -87,7 +88,7 @@ class YieldLimiter:
     def limit(self, profile_concurrency: int, state: BlerbzState) -> int:
         y = config.get("yield") or {}
         if state == BlerbzState.IMMINENT:
-            return max(1, int(y.get("cpu_concurrency_blerbz", 1)))
+            return max(1, workload.yield_int("cpu_concurrency_busy", "cpu_concurrency_blerbz", 1))
         return max(1, min(profile_concurrency, int(y.get("cpu_concurrency_normal", 4))))
 
     @asynccontextmanager
@@ -523,7 +524,7 @@ def _prepare(body: dict, route: Route, state: BlerbzState) -> dict:
     if route.profile.chat_template_kwargs and "chat_template_kwargs" not in out:
         out["chat_template_kwargs"] = route.profile.chat_template_kwargs
     if state == BlerbzState.IMMINENT:
-        cap = int((config.get("yield") or {}).get("max_tokens_blerbz", 512))
+        cap = workload.yield_int("max_tokens_busy", "max_tokens_blerbz", 512)
         mt = out.get("max_tokens") or out.get("max_completion_tokens")
         if mt is None or int(mt) > cap:
             out["max_tokens"] = cap

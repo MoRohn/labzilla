@@ -8,7 +8,7 @@
 | Responses have `fallback: true` / `degraded: true` | primary unhealthy, memory guard shed it, or the alias floor is above the largest resident model | `local-ai status`; activity `memory_guard_shed` |
 | `429 queue timeout waiting for a model slot` | concurrency limit during primary workload IMMINENT (1 per profile) or a backlog | `local-ai gpu`; retry later or send batch |
 | `max_tokens` clamped to 512 | Primary-workload IMMINENT yield | by design while production runs |
-| Everything slow, state stuck IMMINENT with reason "gpusched unreachable" | gpusched down, or the token Secret is wrong | `systemctl --user status bnn-gpusched`; `curl -H "Authorization: Bearer <metrics token>" http://10.42.0.1:8770/metrics` |
+| Everything slow, state stuck IMMINENT with reason "gpusched unreachable" | `primary_workload.enabled` is true and gpusched is down, or the token Secret is wrong. With the integration off this does not happen | Check the scheduler unit and `GET /metrics` with the metrics token. Or set `primary_workload.enabled: false` |
 | gpusched shows `admissible 0` / `available` < 8192 MiB | host memory pressure | Rank processes by anonymous memory: `for p in /proc/[0-9]*; do awk '/^Pss_Anon/{print $2}' $p/smaps_rollup 2>/dev/null \| xargs -I{} echo {} $(basename $p); done \| sort -rn \| head`. On 2026-10-01 the cause was Firefox + desktop sessions |
 | A new CPU model eats GB of anonymous memory | missing `--no-repack` | every llama.cpp server here needs `--no-repack` (GPU_SCHEDULING.md) |
 | tier0-small keeps coming back then disappearing | `kubectl apply` resets replicas; the guard re-sheds after 60 s | expected; for Argo use `ignoreDifferences` on replicas |

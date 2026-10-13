@@ -27,7 +27,7 @@
 .lz-sys-timeline-label { overflow-wrap: anywhere; }
 .lz-sys-strip { width: 100%; height: 8px; display: block; }
 .lz-sys-strip-bg { fill: var(--seg-free); }
-.lz-sys-strip-blerbz { fill: var(--seg-blerbz); }
+.lz-sys-strip-primary { fill: var(--seg-primary); }
 .lz-sys-strip-ai { fill: var(--seg-ai); }
 @media (max-width: 639.98px) {
   .lz-sys-timeline li { grid-template-columns: minmax(4em, max-content) 1fr; }

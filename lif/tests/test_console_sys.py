@@ -269,7 +269,7 @@ def test_blerbz_states_told_apart_by_fields() -> None:
     base = _base()["gpu"]
     assert hz.blerbz(base)[0] == "idle"
     busy = hz.blerbz({**base, "state": "IMMINENT", "production_live": True})
-    assert busy[0] == "busy" and busy[2] == "GPU reserved for BLERBZ video generation."
+    assert busy[0] == "busy" and busy[1] == "Running" and busy[2] == "GPU reserved for Primary workload."
     assert hz.blerbz({**base, "state": "IMMINENT", "residents_loaded": {"llm": False}})[1] == "Reloading"
     assert hz.blerbz({**base, "state": "IMMINENT", "age_sec": 90})[0] == "unknown"           # stale = blind
     assert hz.blerbz({**base, "state": "IMMINENT", "reachable": False, "reason": "gpusched unreachable (fail-safe)"})[0] == "unknown"
@@ -306,7 +306,7 @@ def test_role_cause_parses_router_reasons(reason: str, kw: dict[str, Any], cause
 
 def test_job_states() -> None:
     assert hz.job_state("queued", "waiting: primary workload IMMINENT (1 production lease(s) live): batch/eval paused") == \
-        ("waiting", "Waiting for BLERBZ", True)
+        ("waiting", "Waiting for Primary workload", True)
     assert hz.job_state("queued", "waiting: batch paused by operator (x)")[0] == "paused"
     assert hz.job_state("failed: boom", None) == ("failed", "Failed", False)
     assert hz.job_state("done", None)[0] == "completed"
@@ -405,10 +405,13 @@ def test_poller_builds_healthy_status(fake: Fake, published: list[tuple[str, Any
     assert by["vision"].state_label == "Not installed" and by["vision"].cause == "not_deployed"
     assert by["auto"].state == "healthy"
     assert [e.id for e in snap.activity] == ["act:3", "act:1"]           # flapping row dropped
-    assert {s.key for s in snap.services} >= {"gateway", "controller", "decision", "batch", "gpusched", "prometheus",
+    assert {s.key for s in snap.services} >= {"gateway", "controller", "decision", "batch", "prometheus",
                                               f"model:{P4B}"}
+    assert "gpusched" not in {s.key for s in snap.services}          # scheduler is optional and off
+    assert st.resource.primary_enabled is False
     assert [t for t, _ in published].count("status") == 1 and not [t for t, _ in published if t == "notification"]
-    assert {w.key for w in snap.compute.work} == {"blerbz", "ai_serving", "other", "available"} or snap.compute.note
+    assert "blerbz" not in {w.key for w in snap.compute.work}
+    assert {w.key for w in snap.compute.work} >= {"ai_serving", "available"} or snap.compute.note
 
 
 def test_fallback_raises_one_notification_and_memory_guard_cause(fake: Fake, published: list[tuple[str, Any]]) -> None:
@@ -473,12 +476,16 @@ def test_new_activity_publishes_and_candidate_notifies(fake: Fake, published: li
     assert len(note) == 1 and note[0].kind == "candidate" and note[0].href == f"/models/candidates/{CAND}"
 
 
-def test_blerbz_busy_and_controller_down(fake: Fake, published: list[tuple[str, Any]]) -> None:
+def test_blerbz_busy_and_controller_down(fake: Fake, published: list[tuple[str, Any]], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("lif.gpu.workload.enabled", lambda: True)
+    monkeypatch.setattr("lif.gpu.workload.display_name", lambda: "Primary workload")
     fake.s["gpu"].update(state="IMMINENT", production_live=True, production_leases=1)
     fake.s["overview"]["batch"]["pending"] = 3
     snap = refresh()
-    assert snap.status.health == "busy" and snap.status.resource.blerbz_reason == "GPU reserved for BLERBZ video generation."
+    assert snap.status.health == "busy" and snap.status.resource.blerbz_reason == "GPU reserved for Primary workload."
+    assert snap.status.resource.primary_enabled is True
     assert any(n.kind == "blerbz_contention" for n in snap.status.notifications)
+    assert "BLERBZ" not in (snap.status.headline + snap.status.resource.blerbz_reason)
     fake.down.add("controller")
     snap = refresh()
     ctrl = next(s for s in snap.services if s.key == "controller")
@@ -664,7 +671,8 @@ def test_timeline_storage_alerts_logs(fake: Fake, published: list[tuple[str, Any
     c = make_client(ADMIN)
     tl = c.get("/api/system/timeline?hours=3").json()
     assert tl["available"] and len(tl["buckets"]) == 3
-    assert tl["buckets"][-1]["label"] == "BLERBZ video + inference" and tl["buckets"][-1]["blerbz_pct"] == 50.0
+    assert tl["buckets"][-1]["label"] == "GPU + inference" and tl["buckets"][-1]["blerbz_pct"] == 50.0
+    assert tl["primary_enabled"] is False and "BLERBZ" not in tl["buckets"][-1]["label"]
     fake.s["alerts"] = [{"metric": {"alertname": "LIFHostHeadroomLow", "severity": "warning", "alertstate": "firing"}},
                         {"metric": {"alertname": "Watchdog", "severity": "none", "alertstate": "firing"}}]
     al = c.get("/api/system/alerts").json()
@@ -751,7 +759,9 @@ def test_nested_wrong_types_never_500(fake: Fake, published: list[tuple[str, Any
     assert c.post("/api/system/services/gateway/retry").status_code < 500
 
 
-def test_cached_live_state_expires_when_upstreams_go_quiet(fake: Fake, published: list[tuple[str, Any]]) -> None:
+def test_cached_live_state_expires_when_upstreams_go_quiet(fake: Fake, published: list[tuple[str, Any]],
+                                                           monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("lif.gpu.workload.enabled", lambda: True)
     fake.s["human"] = {"queue": [{"id": 7, "status": "pending", "ts": NOW, "decision_ref": "model-advance/v1",
                                   "package": {"labels": ["yes", "no"], "reason": "low_confidence"}}]}
     snap = refresh()

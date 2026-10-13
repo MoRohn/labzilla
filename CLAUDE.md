@@ -40,8 +40,8 @@ credentials, or private findings. Personal, machine-specific instructions go in
   paths those apps reference. Pushing is the owner's call.
 - `homelab/argocd/root.yaml` is applied by hand and is not self-managed. If it changes,
   re-apply it with `kubectl apply -f homelab/argocd/root.yaml`.
-- The primary workload (Docker, `~/bnn`) has GPU priority. Don't restart docker, k3s or
-  gpusched without the owner's go-ahead. LIF must lease the GPU through gpusched.
+- An optional primary workload (off unless `primary_workload.enabled`; on this host, Docker under `~/bnn`) has GPU priority when it is on. Don't restart docker, k3s or
+  gpusched without the owner's go-ahead. When that integration is on, LIF leases the GPU through gpusched.
 - LIF's memory guard owns the replicas of `ai-serving/tier0-small` and `embedding`. Their
   manifests deliberately have no `replicas:` field.
 - Single node, 128 GB of unified memory shared with the GPU: every workload needs requests and limits.

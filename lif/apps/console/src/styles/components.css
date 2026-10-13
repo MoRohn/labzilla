@@ -470,7 +470,7 @@ html:has(dialog.lz-modal[open]) { overflow: hidden; } /* no background scroll be
 .lz-resource-track { display: flex; height: 10px; border-radius: var(--radius-pill); background: var(--seg-free); overflow: hidden; }
 .lz-seg { display: block; height: 100%; flex-shrink: 0; transition: width var(--dur) var(--ease); }
 .lz-seg + .lz-seg { box-shadow: inset 2px 0 0 var(--surface); } /* hairline between segments without stealing width */
-.lz-seg-blerbz { background: var(--seg-blerbz); }
+.lz-seg-primary { background: var(--seg-primary); }
 .lz-seg-ai, .lz-seg-brand { background: var(--seg-ai); }
 .lz-seg-other, .lz-seg-info { background: var(--seg-other); }
 .lz-seg-free { background: var(--seg-free); }

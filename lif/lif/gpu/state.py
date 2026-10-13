@@ -6,7 +6,7 @@ decide how politely its CPU tiers and batch work must behave.
 
     IMMINENT  a production lease is live, a resident model is not loaded (reloading),
               gpusched is unreachable/stale, or it reports holds      → fail-safe
-    HIGH      P(production arrival in the next hour) ≥ blerbz.state_thresholds.high
+    HIGH      P(production arrival in the next hour) ≥ primary_workload.state_thresholds.high
     MODERATE  P ≥ moderate
     LOW       otherwise
 """
@@ -22,6 +22,7 @@ from enum import IntEnum
 import httpx
 
 from lif.common import config, log, metrics
+from lif.gpu import workload
 
 LOG = log.get("lif.gpu")
 
@@ -91,8 +92,14 @@ class Snapshot:
         return d
 
 
+def standalone_snapshot() -> Snapshot:
+    """What Labzilla reports when no external workload is configured: quiet, not fail-safe."""
+    return Snapshot(ts=time.time(), reachable=True, state=BlerbzState.LOW,
+                    reason="standalone (no external workload configured)")
+
+
 def derive_state(snap: Snapshot, thresholds: dict | None = None) -> tuple[BlerbzState, str]:
-    t = thresholds or config.get("blerbz.state_thresholds") or {"moderate": 0.2, "high": 0.5}
+    t = thresholds or workload.thresholds()
     if not snap.reachable:
         return BlerbzState.IMMINENT, "gpusched unreachable (fail-safe)"
     if snap.production_live:
@@ -157,6 +164,11 @@ class GpuStateWatcher:
         self._task: asyncio.Task | None = None
 
     async def refresh(self) -> Snapshot:
+        if not workload.enabled():
+            snap = standalone_snapshot()
+            self._snap = snap
+            metrics.blerbz_state.set(int(snap.state))
+            return snap
         try:
             r = await self.client.get(f"{self.url}/metrics", headers={"Authorization": f"Bearer {self.token}"})
             r.raise_for_status()
@@ -171,6 +183,8 @@ class GpuStateWatcher:
         return snap
 
     def current(self) -> Snapshot:
+        if not workload.enabled():
+            return standalone_snapshot()
         s = self._snap
         if not s.ts or time.time() - s.ts > self.stale:
             stale = Snapshot(**{**asdict(s), "state": BlerbzState.IMMINENT})

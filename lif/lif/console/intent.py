@@ -85,7 +85,7 @@ RULES: tuple[Rule, ...] = (
        r"|\b(?:my|the) last (?:request|answer|prompt|question)\b"),
     _r("fallback", "system_query", 0.9, r"\bfall(?:s|ing|en)?[ -]?back\b|\bfallback\b|\bdegraded\b"),
     _r("gpu", "system_query", 0.9,
-       r"\b(?:gpu|dgx|blerbz|vram|unified memory)\b|\bmemory (?:use|usage|pressure|left)\b|\bwhy is (?:it|labzilla) slow\b"),
+       r"\b(?:gpu|dgx|blerbz|vram|unified memory|primary workload)\b|\bmemory (?:use|usage|pressure|left)\b|\bwhy is (?:it|labzilla) slow\b"),
     _r("changes", "system_query", 0.9,
        r"\bwhat(?:'s| has| have)? (?:changed|happened)\b|\bchanges? (?:today|recently)\b|\brecent activity\b"),
     _r("incidents", "system_query", 0.9,
@@ -289,6 +289,13 @@ def _discover(text: str, snap: Snapshot, user: User) -> CommandResolution:
                              answer=_with_note(f"Model Scout will look for better {what}.", note))
 
 
+def _resume_impact() -> str:
+    from lif.gpu import workload
+    if workload.enabled():
+        return f"Batch work still yields to {workload.display_name()} when it needs the GPU."
+    return "Queued batch work starts again."
+
+
 def _batch_job_counts(snap: Snapshot) -> dict[str, int] | None:
     """Unfinished batch jobs by state from the controller's overview, or None when it isn't known."""
     ov = snap.raw.get("overview") if isinstance(snap.raw, dict) else None
@@ -326,7 +333,7 @@ def _batch(text: str, snap: Snapshot, user: User, pause: bool) -> CommandResolut
         action = ProposedAction(
             id="jobs.resume_all", label="Resume batch jobs",
             description="Lets queued batch work start again.",
-            impact="Batch work still yields to BLERBZ automatically when it needs the GPU." +
+            impact=_resume_impact() +
                    (" Maintenance mode is on, so batch stays paused until maintenance ends." if maintenance else ""),
             confirm="none", perm="jobs.control", path="/api/jobs/batch/pause-all", body={"paused": False})
     action, note = _action(user, action)
@@ -369,29 +376,36 @@ def _gpu(text: str, snap: Snapshot, user: User) -> CommandResolution:
                                  navigate="/system/compute")
     r = snap.status.resource
     util = r.gpu_util_pct
-    # Console BLERBZ states (humanize.blerbz): busy = generating/reloading, reserved = GPU held for it,
-    # imminent = likely within the hour (no effect on AI yet), unknown = scheduler not visible.
-    if r.blerbz in ("busy", "reserved"):
-        head = f"**The GPU is working for BLERBZ** — {r.blerbz_reason or r.blerbz_label}"
-        tail = "BLERBZ has priority: local AI slows down and batch work waits until it's done. This is automatic."
-    elif r.blerbz == "unknown" and r.blerbz_reason:
+    name = r.primary_name or "Primary workload"
+    # Workload states (humanize.blerbz): busy = running/reloading, reserved = GPU held,
+    # imminent = likely within the hour, unknown = scheduler not visible. Shown only when enabled.
+    if r.primary_enabled and r.blerbz in ("busy", "reserved"):
+        head = f"**The GPU is working for {name}** — {r.blerbz_reason or r.blerbz_label}"
+        tail = f"{name} has priority: local AI slows down and batch work waits until it's done. This is automatic."
+    elif r.primary_enabled and r.blerbz == "unknown" and r.blerbz_reason:
         head = f"**Labzilla can't see the GPU scheduler right now** — {r.blerbz_reason}"
         tail = "" if util is None else f"GPU load is {util:.0f}%."
     elif util is not None and util >= 50:
-        head = f"**The GPU is at {util:.0f}%**, and BLERBZ is {(r.blerbz_label or 'idle').lower()}."
+        extra = f", and {name} is {(r.blerbz_label or 'idle').lower()}" if r.primary_enabled else ""
+        head = f"**The GPU is at {util:.0f}%**{extra}."
         tail = "Most of the load comes from local AI or other work."
     elif util is not None:
-        head = f"**The GPU isn't busy** — {util:.0f}% load. BLERBZ is {(r.blerbz_label or 'idle').lower()}."
+        extra = f" {name} is {(r.blerbz_label or 'idle').lower()}." if r.primary_enabled else ""
+        head = f"**The GPU isn't busy** — {util:.0f}% load.{extra}"
         tail = ""
-    else:
-        head = f"BLERBZ is {(r.blerbz_label or 'in an unknown state').lower()}."
+    elif r.primary_enabled:
+        head = f"{name} is {(r.blerbz_label or 'in an unknown state').lower()}."
         tail = "GPU load isn't measurable right now."
-    if r.blerbz == "imminent":
-        tail = (tail + " " + (r.blerbz_reason or "BLERBZ is likely to start soon.")).strip()
+    else:
+        head = "GPU load isn't measurable right now."
+        tail = ""
+    if r.primary_enabled and r.blerbz == "imminent":
+        tail = (tail + " " + (r.blerbz_reason or f"{name} is likely to start soon.")).strip()
     head = head if head.endswith(".") else head + "."
     facts = [Fact(label="GPU load", value=_num(util, "%")),
-             Fact(label="Unified memory", value=f"{_num(r.mem_used_gb, ' GB')} of {_num(r.mem_total_gb, ' GB')} used"),
-             Fact(label="BLERBZ", value=r.blerbz_label or "unknown")]
+             Fact(label="Unified memory", value=f"{_num(r.mem_used_gb, ' GB')} of {_num(r.mem_total_gb, ' GB')} used")]
+    if r.primary_enabled:
+        facts.append(Fact(label=name, value=r.blerbz_label or "unknown"))
     for w in snap.compute.work:
         if w.key in ("blerbz", "ai_serving") and w.gb is not None:
             facts.append(Fact(label=f"{w.label or w.key} memory", value=_num(w.gb, " GB", 1)))
@@ -438,7 +452,7 @@ def _fallback(text: str, snap: Snapshot, user: User) -> CommandResolution:
         if role.model_name:
             answer += f" Requests are answered by {role.model_name}."
         if role.cause in ("yielded_to_primary", "shed_by_memory_guard"):
-            answer += " This is automatic and reverses itself when BLERBZ frees the capacity."
+            answer += " This is automatic and reverses itself when that capacity is free."
     elif role.state in ("offline", "attention"):
         answer = f"**{role.label or role.alias} ({role.alias}) is unavailable** — {role.cause_label or role.state_label}."
     else:
@@ -505,8 +519,9 @@ def _jobs(text: str, snap: Snapshot, user: User) -> CommandResolution:
         answer = "No background jobs are running or queued."
     else:
         answer = f"{j.running} running, {j.queued} queued and {j.waiting} waiting."
-        if j.waiting and snap.status.resource.blerbz in ("busy", "reserved", "unknown"):
-            answer += " Waiting jobs resume automatically when BLERBZ is done with the GPU."
+        name = snap.status.resource.primary_name or "the primary workload"
+        if j.waiting and snap.status.resource.primary_enabled and snap.status.resource.blerbz in ("busy", "reserved", "unknown"):
+            answer += f" Waiting jobs resume automatically when {name} is done with the GPU."
         elif snap.status.batch_paused:
             answer += " Batch work is paused."
     facts = [Fact(label="Running", value=str(j.running)), Fact(label="Queued", value=str(j.queued)),
@@ -519,8 +534,9 @@ def _health(text: str, snap: Snapshot, user: User) -> CommandResolution:
         return CommandResolution(kind="system_query", title="Labzilla status", answer=NOT_READY, navigate="/")
     st = snap.status
     facts = [Fact(label="Local AI", value=st.local_ai_label or st.local_ai),
-             Fact(label="Primary model", value=st.primary_model or "unknown"),
-             Fact(label="BLERBZ", value=st.resource.blerbz_label or "unknown")]
+             Fact(label="Primary model", value=st.primary_model or "unknown")]
+    if st.resource.primary_enabled:
+        facts.append(Fact(label=st.resource.primary_name or "Primary workload", value=st.resource.blerbz_label or "unknown"))
     return CommandResolution(kind="system_query", title=st.headline or "Labzilla status", navigate="/",
                              answer=st.headline or "Status unknown.", facts=facts)
 

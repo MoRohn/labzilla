@@ -17,18 +17,26 @@ import {
 } from '@/ui';
 import { useLazy } from './shared';
 
-const SEGMENT: Record<WorkKey, SegmentTone> = { blerbz: 'blerbz', ai_serving: 'ai', other: 'other', available: 'free' };
+const SEGMENT: Record<WorkKey, SegmentTone> = { blerbz: 'primary', ai_serving: 'ai', other: 'other', available: 'free' };
 
 const TEMPERATURE: Record<Temperature, string> = { normal: 'Normal', warm: 'Warm', hot: 'Hot', unknown: 'Not reported' };
 
-/** What the primary workload's state means for Labzilla, in one sentence (the raw scheduler reason is in tech). */
-const BLERBZ_MEANS: Record<BlerbzState, string> = {
-  idle: 'BLERBZ is quiet, so Labzilla can use the spare capacity.',
-  busy: 'BLERBZ has GPU priority. Labzilla steps back while it runs: answers may be shorter and background work waits.',
-  imminent: 'BLERBZ is about to need the GPU. Labzilla is stepping back so it can start without waiting.',
-  reserved: 'GPU memory is held for BLERBZ. Background AI work waits until it is released.',
-  unknown: "The GPU scheduler isn't reporting, so Labzilla runs in fail-safe mode and assumes BLERBZ may need the GPU.",
-};
+/** What an optional external workload's state means for Labzilla. The raw scheduler reason stays in tech. */
+function workloadMeans(name: string, s: BlerbzState): string {
+  const n = name || 'Primary workload';
+  switch (s) {
+    case 'idle':
+      return `${n} is quiet, so Labzilla can use the spare capacity.`;
+    case 'busy':
+      return `${n} has GPU priority. Labzilla steps back while it runs: answers may be shorter and background work waits.`;
+    case 'imminent':
+      return `${n} is about to need the GPU. Labzilla is stepping back so it can start without waiting.`;
+    case 'reserved':
+      return `GPU memory is held for ${n}. Background AI work waits until it is released.`;
+    default:
+      return `The GPU scheduler isn't reporting, so Labzilla runs in fail-safe mode and assumes ${n} may need the GPU.`;
+  }
+}
 
 function blerbzHealth(s: BlerbzState) {
   return s === 'idle' ? 'healthy' : s === 'unknown' ? 'unknown' : 'busy';
@@ -118,13 +126,15 @@ export function ComputeTab() {
         </div>
       </Card>
 
-      <Card title="Primary workload (BLERBZ)" actions={<StatusBadge health={blerbzHealth(r.blerbz)} label={r.blerbz_label || undefined} size="sm" />}>
-        <div class="stack-sm">
-          {r.blerbz_reason && <p>{r.blerbz_reason}</p>}
-          <p class="muted">{BLERBZ_MEANS[r.blerbz]}</p>
-          <p class="muted small">BLERBZ always has priority on the GPU; Labzilla borrows only what it leaves free.</p>
-        </div>
-      </Card>
+      {r.primary_enabled && (
+        <Card title={r.primary_name || 'Primary workload'} actions={<StatusBadge health={blerbzHealth(r.blerbz)} label={r.blerbz_label || undefined} size="sm" />}>
+          <div class="stack-sm">
+            {r.blerbz_reason && <p>{r.blerbz_reason}</p>}
+            <p class="muted">{workloadMeans(r.primary_name, r.blerbz)}</p>
+            <p class="muted small">{r.primary_name || 'The primary workload'} has priority on the GPU while this integration is on. Labzilla borrows only what it leaves free.</p>
+          </div>
+        </Card>
+      )}
 
       <Card title="Workload timeline" subtitle="What the DGX did, hour by hour">
         {Timeline ? <Timeline /> : <TimelineSkeleton />}

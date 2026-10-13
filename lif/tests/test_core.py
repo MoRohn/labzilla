@@ -13,7 +13,8 @@ from lif.decision.fabric import DecisionFabric
 from lif.decision.providers import JevProvider
 from lif.decision.rules import rules
 from lif.decision.types import load_definitions
-from lif.gpu.state import BlerbzState, Job, Snapshot, Verdict, can_run, derive_state, snapshot_from_metrics
+from lif.gpu.state import (BlerbzState, GpuStateWatcher, Job, Snapshot, Verdict, can_run, derive_state,
+                          snapshot_from_metrics)
 from lif.models import hardware_fit
 from lif.models.registry import Registry, RegistryError
 from lif.policy import engine as policy
@@ -181,6 +182,12 @@ def test_state_from_metrics():
 
 def test_unreachable_is_failsafe():
     assert derive_state(Snapshot(reachable=False))[0] == BlerbzState.IMMINENT
+
+
+def test_watcher_stays_quiet_when_primary_workload_is_off():
+    """A fresh install does not fail-safe to IMMINENT just because gpusched is absent."""
+    snap = GpuStateWatcher().current()
+    assert snap.state == BlerbzState.LOW and snap.reachable and "standalone" in snap.reason
 
 
 def test_can_run():
