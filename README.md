@@ -193,6 +193,20 @@ Three layers back this up:
 Public docs that refer to private ones mark the link *(private, local only)*.
 Claude Code's own memory and transcripts live in `~/.claude/`, outside the repo.
 
+## Public site
+
+The landing page is static HTML, CSS, and images in [`docs/`](docs/index.html). [`docs/.nojekyll`](docs/.nojekyll) tells GitHub Pages to serve those files as-is, with no Jekyll build.
+
+To publish it, open the repository **Settings → Pages** and set:
+
+| Setting | Value |
+|---|---|
+| **Build and deployment → Source** | Deploy from a branch |
+| **Branch** | `main` |
+| **Folder** | `/docs` |
+
+Save. GitHub then serves the project site at <https://morohn.github.io/labzilla/>. Argo CD only syncs `homelab/argocd/apps/**`, `homelab/monitoring/**`, and `homelab/networking/metallb/config/**`, so this folder does not deploy to the cluster.
+
 ## Conventions
 
 - **Commits:** Conventional Commits with a scope: `feat(monitoring): …`, `fix(lif): …`, `docs(homelab): …`.
