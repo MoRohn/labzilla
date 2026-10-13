@@ -5,29 +5,34 @@
 availability_target: 0.95
 
 # ── Host GPU scheduler (gpusched) ─────────────────────────────────────────
-# The single GPU admission authority on this box. The LIF only READS it (metrics
-# token) for the primary-workload capacity signal. GPU tiers lease through its K8s gate.
+# Used only when primary_workload.enabled is true. The LIF only READS it (metrics
+# token) for that capacity signal. GPU tiers lease through its K8s gate.
 gpusched:
   url: http://10.42.0.1:8770
   token_file: /var/run/lif/gpusched/token
   poll_sec: 5
   stale_after_sec: 30           # older than this → treat primary-workload state as IMMINENT (fail-safe)
 
-# Primary-workload predictive capacity state, from gpusched's validated forecast.
-blerbz:
-  state_thresholds:             # P(production arrival within the next hour)
+# Optional external workload that shares this machine (off unless an operator turns it on).
+# When enabled, Labzilla reads gpusched and yields while that workload is live. Set `name`
+# to whatever should appear in the console. A legacy top-level `blerbz:` block, with no
+# `enabled` key here, still turns the integration on.
+primary_workload:
+  enabled: false
+  name: "Primary workload"
+  state_thresholds:             # P(production arrival within the next hour), used only when enabled
     moderate: 0.20
     high: 0.50
   # IMMINENT = a production lease is live, a resident is reloading, or gpusched is unreachable.
 
 # ── Tier 0 bandwidth yield ────────────────────────────────────────────────────
-# GB10 decode is memory-bandwidth bound (~273 GB/s shared by CPU and GPU). Production
-# LLM decode already uses ~235 GB/s, so CPU inference slows the primary workload. While the primary workload is
-# IMMINENT (production running) the CPU tiers throttle to this many concurrent requests.
+# GB10 decode is memory-bandwidth bound (~273 GB/s shared by CPU and GPU). While the
+# primary-workload integration is enabled and IMMINENT, CPU tiers throttle.
+# `cpu_concurrency_blerbz` and `max_tokens_blerbz` are still read if the new keys are absent.
 yield:
   cpu_concurrency_normal: 4
-  cpu_concurrency_blerbz: 1
-  max_tokens_blerbz: 512        # clamp long generations while production runs
+  cpu_concurrency_busy: 1
+  max_tokens_busy: 512          # clamp long generations while the external workload runs
 
 # ── Host memory guard ─────────────────────────────────────────────────────────
 # The LIF's CPU tiers share the 128 GB pool with the primary workload's resident models. gpusched keeps an
@@ -100,9 +105,9 @@ decision_engineering:
     sample_pct: 100                 # share of eligible requests that also run shadow candidates
   traces:
     claude_code_dirs: [~/.claude/projects]
-    # Never mined by default: primary-workload sessions (spec: primary-workload integration
-    # internals are private). Pass --source explicitly to override, and keep results in private/.
-    exclude: ["*-home-tiny-bnn*"]
+    # Globs for sessions that must not be mined (primary-workload internals stay private).
+    # Pass --source explicitly to override, and keep results in private/.
+    exclude: []
     retention_days: 90
   heavy_executors: [kimi-k3, frontier, local-reasoning, claude, gpt, opus, sonnet]
   # Estimates used ONLY until shadow telemetry exists for a decision (then measured values win).

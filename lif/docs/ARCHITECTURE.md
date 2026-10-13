@@ -82,7 +82,7 @@ All four Python services run from **one image** (`127.0.0.1:5000/lif/fabric:<tag
 
 - `ai-system` holds the services and the registry. `ai-serving` holds the model servers and Jobs. `ai-batch` is reserved.
 - The primary workload is **not** migrated.
-- PriorityClasses: `blerbz-critical` (reserved), `ai-critical`, `ai-interactive`, `ai-batch`, `ai-maintenance`, `ai-experimental`.
+- PriorityClasses: `workload-critical` (reserved for an optional external workload), `ai-critical`, `ai-interactive`, `ai-batch`, `ai-maintenance`, `ai-experimental`.
 - These govern only CPU and RAM inside K3s. The GPU is gpusched's.
 
 ## Decision Engineering

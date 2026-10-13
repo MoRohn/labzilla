@@ -62,10 +62,13 @@ WorkKey = Literal["blerbz", "ai_serving", "other", "available"]
 
 
 class ResourceState(Contract):
-    """What the DGX is doing. Memory is unified (CPU+GPU); None = not measurable right now."""
+    """What the machine is doing. Memory is unified (CPU+GPU); None = not measurable right now."""
+    # `blerbz` is the historical wire name of the optional primary-workload state.
+    primary_enabled: bool = False           # false: no external workload; the console hides that row
+    primary_name: str = ""                  # console label when primary_enabled (operator-configured)
     blerbz: BlerbzState = "unknown"
-    blerbz_label: str = ""                  # "Idle", "Generating video", "Reserved for BLERBZ"
-    blerbz_reason: str = ""                 # one human sentence; raw gpusched reason lives in tech
+    blerbz_label: str = ""                  # "Idle", "Running", "Reserved"
+    blerbz_reason: str = ""                 # one human sentence; raw scheduler reason lives in tech
     gpu_util_pct: float | None = None
     mem_total_gb: float | None = None
     mem_used_gb: float | None = None
@@ -81,7 +84,7 @@ class ResourceState(Contract):
 
 
 class WorkShare(Contract):
-    """One segment of 'Current work' (§36): BLERBZ 18%, AI Serving 24%, Available 58%."""
+    """One segment of 'Current work' (§36): primary workload 18%, AI Serving 24%, Available 58%."""
     key: WorkKey = "other"
     label: str = ""
     gb: float | None = None
@@ -101,7 +104,7 @@ class TimelineBucket(Contract):
     """One hour of the workload timeline (§37)."""
     start: float = 0.0
     end: float = 0.0
-    label: str = ""                         # "inference", "idle", "BLERBZ video", "inference + batch"
+    label: str = ""                         # "inference", "idle", "GPU", "inference + batch"
     blerbz_pct: float | None = None
     ai_pct: float | None = None
     batch_items: int | None = None
@@ -113,6 +116,8 @@ class TimelineResponse(Contract):
     buckets: list[TimelineBucket] = []
     available: bool = True
     reason: str | None = None
+    primary_enabled: bool = False
+    primary_name: str = ""
 
 
 # ── models (§10, §26–§29) ────────────────────────────────────────────────────────────────────
@@ -145,7 +150,7 @@ class ModelRole(Contract):
     fallback_active: bool = False
     degraded: bool = False
     cause: RoleCause | None = None
-    cause_label: str | None = None          # "Default model paused to free memory for BLERBZ"
+    cause_label: str | None = None          # "Default model paused to free memory for the primary workload"
     chain: list[str] = []                   # friendly names, primary first
     canary: CanaryInfo | None = None
     tech: list[TechDetail] = []
@@ -321,8 +326,8 @@ class Job(Contract):
     kind: JobKind = "batch"
     title: str = ""
     status: JobStatus = "queued"
-    status_label: str = ""                  # "Paused", "Waiting for BLERBZ"
-    reason: str | None = None               # "GPU reserved for BLERBZ video generation" (§31)
+    status_label: str = ""                  # "Paused", "Waiting for the primary workload"
+    reason: str | None = None               # "GPU reserved for the primary workload" (§31)
     resumes_automatically: bool = False
     progress: float | None = None           # 0..1
     counts: JobCounts | None = None
@@ -667,7 +672,7 @@ class Receipt(Contract):
     decision: DecisionBadge | None = None
     request_id: str | None = None
     tokens: TokenUsage | None = None
-    clamped: bool = False                   # answer length capped while BLERBZ is busy
+    clamped: bool = False                   # answer length capped while an external workload is busy
     web: WebLookup | None = None            # set when the gateway looked the question up
     tech: list[TechDetail] = []
 

@@ -1,5 +1,5 @@
 // Jobs: every kind of background work in one place, grouped by what it is doing (§30), with the
-// resource-aware reason in words ("Paused — GPU reserved for BLERBZ video generation — resumes
+// resource-aware reason in words ("Paused — GPU reserved for the primary workload — resumes
 // automatically", §31). Raw scheduler states only appear behind Technical details on the job page.
 // Live: the SSE `jobs` event refetches the list; nothing polls.
 import { useState } from 'preact/hooks';

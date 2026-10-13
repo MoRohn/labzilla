@@ -1,7 +1,7 @@
 import { num } from './format';
 import { cx } from './tone';
 
-export type SegmentTone = 'blerbz' | 'ai' | 'other' | 'free' | 'brand' | 'warning' | 'danger' | 'info' | 'inactive';
+export type SegmentTone = 'primary' | 'ai' | 'other' | 'free' | 'brand' | 'warning' | 'danger' | 'info' | 'inactive';
 
 export interface ResourceSegment {
   label: string;
@@ -24,7 +24,7 @@ export interface ResourceBarProps {
   class?: string;
 }
 
-/** Segmented bar for "Current work: BLERBZ 18%, AI Serving 24%, Available 58%" (§36). One bar beats five charts. */
+/** Segmented bar for "Current work: AI Serving 24%, Available 58%" (§36). One bar beats five charts. */
 export function ResourceBar({ label, segments, total, unit, showLegend = true, summary, class: cls }: ResourceBarProps) {
   const used = segments.filter((s) => s.tone !== 'free').reduce((a, s) => a + (s.value ?? 0), 0);
   const text = summary ?? `${num(used)} / ${num(total)} ${unit}`;

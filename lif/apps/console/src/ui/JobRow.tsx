@@ -35,7 +35,7 @@ const ACTION: Record<JobAction, { label: string; icon: IconName }> = {
   retry: { label: 'Retry', icon: 'refresh' },
 };
 
-/** "Paused — Reason: GPU reserved for BLERBZ video generation — Resumes automatically" (§31).
+/** "Paused — Reason: GPU reserved for the primary workload — Resumes automatically" (§31).
  *  Raw scheduler states stay in tech; the row speaks in status_label + reason. Renders an <li>. */
 export function JobRow({ job, onAction, busyAction = null, canControl = true, href }: JobRowProps) {
   const st = STATUS[job.status];

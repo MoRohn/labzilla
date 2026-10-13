@@ -39,12 +39,16 @@ export type Temperature = "normal" | "warm" | "hot" | "unknown";
 
 export type WorkKey = "blerbz" | "ai_serving" | "other" | "available";
 
-/** What the DGX is doing. Memory is unified (CPU+GPU); None = not measurable right now. */
+/** What the machine is doing. Memory is unified (CPU+GPU); None = not measurable right now. */
 export interface ResourceState {
+  /** false: no external workload; the console hides that row */
+  primary_enabled: boolean;
+  /** console label when primary_enabled (operator-configured) */
+  primary_name: string;
   blerbz: BlerbzState;
-  /** "Idle", "Generating video", "Reserved for BLERBZ" */
+  /** "Idle", "Running", "Reserved" */
   blerbz_label: string;
-  /** one human sentence; raw gpusched reason lives in tech */
+  /** one human sentence; raw scheduler reason lives in tech */
   blerbz_reason: string;
   gpu_util_pct?: number | null;
   mem_total_gb?: number | null;
@@ -61,7 +65,7 @@ export interface ResourceState {
   tech: TechDetail[];
 }
 
-/** One segment of 'Current work' (§36): BLERBZ 18%, AI Serving 24%, Available 58%. */
+/** One segment of 'Current work' (§36): primary workload 18%, AI Serving 24%, Available 58%. */
 export interface WorkShare {
   key: WorkKey;
   label: string;
@@ -83,7 +87,7 @@ export interface ComputeView {
 export interface TimelineBucket {
   start: number;
   end: number;
-  /** "inference", "idle", "BLERBZ video", "inference + batch" */
+  /** "inference", "idle", "GPU", "inference + batch" */
   label: string;
   blerbz_pct?: number | null;
   ai_pct?: number | null;
@@ -96,6 +100,8 @@ export interface TimelineResponse {
   buckets: TimelineBucket[];
   available: boolean;
   reason?: string | null;
+  primary_enabled: boolean;
+  primary_name: string;
 }
 
 export type RoleCause = "canary" | "primary_unavailable" | "below_quality_floor" | "not_deployed" | "shed_by_memory_guard" | "yielded_to_primary" | "unknown";
@@ -134,7 +140,7 @@ export interface ModelRole {
   fallback_active: boolean;
   degraded: boolean;
   cause?: RoleCause | null;
-  /** "Default model paused to free memory for BLERBZ" */
+  /** "Default model paused to free memory for the primary workload" */
   cause_label?: string | null;
   /** friendly names, primary first */
   chain: string[];
@@ -334,9 +340,9 @@ export interface Job {
   kind: JobKind;
   title: string;
   status: JobStatus;
-  /** "Paused", "Waiting for BLERBZ" */
+  /** "Paused", "Waiting for the primary workload" */
   status_label: string;
-  /** "GPU reserved for BLERBZ video generation" (§31) */
+  /** "GPU reserved for the primary workload" (§31) */
   reason?: string | null;
   resumes_automatically: boolean;
   /** 0..1 */
@@ -695,7 +701,7 @@ export interface Receipt {
   decision?: DecisionBadge | null;
   request_id?: string | null;
   tokens?: TokenUsage | null;
-  /** answer length capped while BLERBZ is busy */
+  /** answer length capped while an external workload is busy */
   clamped: boolean;
   /** set when the gateway looked the question up */
   web?: WebLookup | null;

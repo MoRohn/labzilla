@@ -83,7 +83,8 @@ def test_fallback_on_upstream_error_is_visible(client):
     assert lif["degraded"]                                     # 1.7B < local/default's 4B floor
 
 
-def test_blerbz_imminent_clamps_tokens(client):
+def test_blerbz_imminent_clamps_tokens(client, monkeypatch):
+    monkeypatch.setattr("lif.gpu.workload.enabled", lambda: True)
     c, gw = client
     gw.S.gpu._snap = Snapshot(ts=__import__("time").time(), reachable=True, production_live=True,
                               state=BlerbzState.IMMINENT, reason="production lease live")
@@ -248,7 +249,8 @@ def test_unhealthy_vision_never_falls_back_to_text(client):
     assert r.status_code == 200 and r.json()["lif"]["served_by"] == "qwen3-4b-instruct-2507-q4km-cpu"
 
 
-def test_latency_budget_never_reroutes_images(client):
+def test_latency_budget_never_reroutes_images(client, monkeypatch):
+    monkeypatch.setattr("lif.gpu.workload.enabled", lambda: True)
     c, gw = client
     _add_vision(gw)
     gw.S.gpu._snap = Snapshot(ts=time.time(), reachable=True, production_live=True,

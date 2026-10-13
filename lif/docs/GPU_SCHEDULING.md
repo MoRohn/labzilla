@@ -1,12 +1,16 @@
 # GPU scheduling and resource protection
 
+The primary-workload integration is **off by default** (`primary_workload.enabled` in `config/lif.yaml`). While it is off, Labzilla does not poll an external GPU scheduler, does not treat a missing scheduler as an emergency, and does not shorten answers. Turn it on only when another process on the same machine should keep GPU priority. The console label is `primary_workload.name` (default "Primary workload").
+
+The rest of this page is how that integration behaves on a host that runs `gpusched`. It is not required to run Labzilla.
+
 ## Authority
 
 `gpusched`, a host systemd user unit on `127.0.0.1:8770` and `10.42.0.1:8770` running in enforce mode, is the **only** GPU admission authority on this host. LIF is a read-only client.
 
 - LIF reads `GET /metrics` with the gpusched **`metrics`** token (Secret `lif-gpusched`). That token can do nothing else.
 - LIF pods never set `runtimeClassName: nvidia` or `NVIDIA_VISIBLE_DEVICES`. Any CUDA context of 256 MiB or more without a lease would raise gpusched's `unmanaged` hold, blocking the primary workload's own admissions.
-- A `lif:` token line exists in `~/.config/bnn/gpusched.token`, but it is **dormant** until gpusched restarts, because it reads tokens only at startup.
+- A metrics token is optional. `scripts/create-secrets.sh` reads `LIF_GPUSCHED_TOKEN_FILE`, then `~/.config/gpusched.token`, then the legacy path `~/.config/bnn/gpusched.token`. If none of those exist, it skips the `lif-gpusched` Secret and Labzilla keeps running with the integration off. gpusched reads new token lines only at startup.
 
 Kubernetes PriorityClasses order CPU and RAM inside K3s only. The kubelet can't see unified GPU memory.
 
@@ -70,7 +74,7 @@ The P0–P8 levels map to gpusched classes as P0–1 → production, P2–3 → 
 GB10's CPU and GPU share one memory bus. With the CPU tiers saturated (8 concurrent generations), production LLM decode went from **2.98 / 3.09 tok/s idle to 2.74 tok/s, about −10 %**. That is n = 1 per arm, so it is indicative only (`benchmarks/2026-10-01-production-llm-interference.md`, private, local only).
 
 While the primary workload is IMMINENT, the gateway therefore:
-- drops CPU concurrency to `yield.cpu_concurrency_blerbz` (1);
+- drops CPU concurrency to `yield.cpu_concurrency_busy` (1; `yield.cpu_concurrency_blerbz` is the older key);
 - caps `max_tokens` at 512.
 
 Batch P5 and above pauses.

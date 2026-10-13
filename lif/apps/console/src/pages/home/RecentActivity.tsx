@@ -72,7 +72,7 @@ export function RecentActivity() {
         <EmptyState
           icon="history"
           title="Nothing has happened yet"
-          body="Model refreshes, finished agents and BLERBZ work show up here as they happen."
+          body="Model refreshes and finished agents show up here as they happen."
           action={{ label: 'Ask Labzilla', href: '/ask', icon: 'ask' }}
           compact
         />

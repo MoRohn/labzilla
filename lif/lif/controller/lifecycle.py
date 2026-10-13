@@ -384,9 +384,15 @@ class Lifecycle:
     # ── serving: load / unload / canary / promote / rollback ────────────────
 
     def _headroom_ok(self, m: dict) -> tuple[bool, str]:
+        from lif.gpu import workload
         snap = self.gpu.current()
         need = _resident_mib(m)
-        if not snap.reachable:
+        if not workload.enabled():
+            # No external scheduler. A missing reading must not block a start the way an
+            # unreachable gpusched used to. A real MemAvailable number still has to leave headroom.
+            if not snap.mem_available_mib:
+                return True, ""
+        elif not snap.reachable:
             return False, "gpusched unreachable: cannot verify memory headroom"
         if snap.mem_available_mib - need < HEADROOM_MIB:
             return False, (f"would leave {snap.mem_available_mib - need:.0f} MiB MemAvailable "

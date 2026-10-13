@@ -20,7 +20,7 @@ and only up to the artifact cap for the time budget. A short STE summary always 
 prose is primary (fast first response, and the text alternative for every visual).
 
 GPU and long-running renderers are deferred, never dropped silently, while the primary workload is
-busy (BLERBZ protection). Jev judgments (bounded, over derived features only) may adjust scores; code
+busy. Jev judgments (bounded, over derived features only) may adjust scores; code
 scores stand alone when Jev is unavailable or its answer is not actionable.
 """
 from __future__ import annotations

@@ -42,15 +42,16 @@ def make_snapshot(**over: Any) -> poller.Snapshot:
                   chain=["Qwen3 4B Instruct 2507 (CPU)", "Qwen3 1.7B (CPU)"]),
         ModelRole(role="balanced", alias="local/default", label="Balanced", state="degraded", state_label="Degraded",
                   model_name="Qwen3 1.7B (CPU)", served_by="qwen3-1.7b-q8-cpu", fallback_active=True,
-                  cause="yielded_to_primary", cause_label="Main model paused while BLERBZ is running; using a backup",
+                  cause="yielded_to_primary", cause_label="Main model paused while Primary workload is running; using a backup",
                   chain=["Qwen3 4B Instruct 2507 (CPU)", "Qwen3 1.7B (CPU)"]),
         ModelRole(role="vision", alias="local/vision", label="Vision", state="offline", state_label="Unavailable",
                   cause="not_deployed", cause_label="No model is installed for this role"),
     ]
     status = SystemStatus(
-        health="busy", headline="BLERBZ is using the GPU", local_ai="healthy", local_ai_label="Local AI Ready",
+        health="busy", headline="Primary workload is using the GPU", local_ai="healthy", local_ai_label="Local AI Ready",
         primary_model="Qwen3 4B", resource=ResourceState(
-            blerbz="busy", blerbz_label="Generating", blerbz_reason="GPU reserved for BLERBZ video generation",
+            primary_enabled=True, primary_name="Primary workload",
+            blerbz="busy", blerbz_label="Running", blerbz_reason="GPU reserved for Primary workload.",
             gpu_util_pct=87.0, mem_total_gb=128.0, mem_used_gb=96.0, mem_available_gb=32.0),
         jobs=JobsSummary(running=1, queued=2, waiting=3, failed_24h=0), approvals_pending=1,
         notifications=[Notification(id="n1", severity="warning", title="Fallback active", body="Balanced is on a backup",
@@ -59,7 +60,7 @@ def make_snapshot(**over: Any) -> poller.Snapshot:
                                 summary="Service repeatedly failed to start")])
     snap = poller.Snapshot(
         status=status, roles=roles,
-        compute=ComputeView(work=[WorkShare(key="blerbz", label="BLERBZ", gb=40.0), WorkShare(key="ai_serving",
+        compute=ComputeView(work=[WorkShare(key="blerbz", label="Primary workload", gb=40.0), WorkShare(key="ai_serving",
                                                                                               label="AI serving", gb=6.0)]),
         activity=[ActivityEvent(id="a1", ts=now - 60, category="model", title="Model refresh completed — 2 better "
                                 "candidates found"),
@@ -242,11 +243,11 @@ def test_intent_table(text, kind):
 def test_command_answers_from_snapshot(env):
     snap, u = env["snap"], ADMIN
     gpu = intent.resolve("Why is the GPU busy?", snap, u)
-    assert "BLERBZ" in gpu.answer and gpu.navigate == "/system/compute"
-    assert {"GPU load": "87%", "BLERBZ": "Generating"}.items() <= {f.label: f.value for f in gpu.facts}.items()
+    assert "Primary workload" in gpu.answer and "BLERBZ" not in gpu.answer and gpu.navigate == "/system/compute"
+    assert {"GPU load": "87%", "Primary workload": "Running"}.items() <= {f.label: f.value for f in gpu.facts}.items()
 
     fb = intent.resolve("Why did local/default fall back to local/fast?", snap, u)
-    assert "Main model paused while BLERBZ is running" in fb.answer and "fallback" in fb.answer
+    assert "Main model paused while Primary workload is running" in fb.answer and "fallback" in fb.answer
     assert fb.navigate == "/models/roles/balanced"
     assert {f.label: f.value for f in fb.facts}["Fallback order"] == "Qwen3 4B Instruct 2507 (CPU) → Qwen3 1.7B (CPU)"
 
@@ -294,11 +295,13 @@ def test_command_actions_are_proposals(env):
 
 def test_command_gpu_states(env):
     snap = env["snap"]
-    snap.status.resource = ResourceState(blerbz="imminent", blerbz_label="Likely soon", gpu_util_pct=12.0,
-                                         blerbz_reason="BLERBZ is likely to start within the hour.")
+    snap.status.resource = ResourceState(primary_enabled=True, primary_name="Primary workload",
+                                         blerbz="imminent", blerbz_label="Likely soon", gpu_util_pct=12.0,
+                                         blerbz_reason="Primary workload is likely to start within the hour.")
     soon = intent.resolve("Why is the GPU busy?", snap, ADMIN).answer
     assert soon.startswith("**The GPU isn't busy**") and "likely to start within the hour" in soon
-    snap.status.resource = ResourceState(blerbz="unknown", blerbz_label="Unknown",
+    snap.status.resource = ResourceState(primary_enabled=True, primary_name="Primary workload",
+                                         blerbz="unknown", blerbz_label="Unknown",
                                          blerbz_reason="Labzilla can't see the GPU scheduler.")
     assert "can't see the GPU scheduler" in intent.resolve("Check GPU load", snap, ADMIN).answer
 
@@ -380,7 +383,7 @@ def test_ask_allow_jev_route_and_context(client, env):
 
 @pytest.mark.parametrize("resp,title", [
     (httpx.Response(429, json={"error": {"message": "queue timeout waiting for a model slot (primary-workload yield)",
-                                         "type": "capacity"}}), "Waiting for the primary workload to finish"),
+                                         "type": "capacity"}}), "Waiting for Primary workload to finish"),
     (httpx.Response(429, json={"error": {"message": "queue timeout waiting for a model slot",
                                          "type": "capacity"}}), "Local AI is busy"),
     (httpx.Response(503, json={"error": {"message": "no local model is deployed for local/vision (capacity; see "
@@ -407,7 +410,8 @@ def test_ask_gateway_errors_are_human(client, env, resp, title):
     assert m["status"] == "error" and m["error"]["title"] == title
 
 
-def test_ask_clamp_reported_only_while_gpusched_imminent(client, env):
+def test_ask_clamp_reported_only_while_gpusched_imminent(client, env, monkeypatch):
+    monkeypatch.setattr("lif.gpu.workload.enabled", lambda: True)
     body = chunk("cut") + f"data: {json.dumps({'choices': [{'delta': {}, 'finish_reason': 'length'}]})}\n\n" + \
         "data: [DONE]\n\n"
     gateway(httpx.Response(200, headers=HAPPY_HEADERS, content=body.encode()), [])
@@ -534,7 +538,8 @@ def test_capabilities(client, env):
     assert list(modes) == ["auto", "fast", "balanced", "deep", "code", "vision"]
     assert modes["fast"]["blurb"] == "Best for low-latency requests." and modes["fast"]["alias"] == "local/fast"
     assert modes["vision"]["available"] is False and "vision" in modes["vision"]["reason"].lower()
-    assert modes["balanced"]["available"] is True and "BLERBZ" in modes["balanced"]["reason"]
+    assert modes["balanced"]["available"] is True and "Primary workload" in modes["balanced"]["reason"]
+    assert "BLERBZ" not in modes["balanced"]["reason"]
     assert caps["external_allowed"] is False
     assert [p["value"] for p in caps["privacy_options"]] == ["local_only", "allow_jev"]
 
@@ -579,7 +584,8 @@ def test_jobs_list(client, env):
     g = r["groups"]
     by_id = {j["id"]: j for grp in g.values() for j in grp}
     w = by_id["batch:bj_000000000001"]
-    assert w["status"] == "waiting" and w["resumes_automatically"] is True and "BLERBZ" in w["reason"]
+    assert w["status"] == "waiting" and w["resumes_automatically"] is True and "Primary workload" in w["reason"]
+    assert "BLERBZ" not in (w["reason"] or "")
     assert by_id["batch:bj_000000000002"]["status"] == "paused"
     assert by_id["batch:bj_000000000003"]["actions"] == ["resume", "cancel"]
     assert by_id["batch:bj_000000000005"]["status_label"] == "Finished with 2 failures"

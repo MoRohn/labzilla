@@ -153,10 +153,13 @@ def _gpu() -> DetectedItem:
     if not snap.updated_at:
         return DetectedItem(label="GPU", value="Checking…", ok=False)
     r = snap.status.resource
+    if not r.primary_enabled and r.gpu_util_pct is None and r.mem_total_gb is None:
+        return DetectedItem(label="GPU", value="No external scheduler configured", ok=True)
     if snap.errors.get("gpu") or (r.gpu_util_pct is None and r.mem_total_gb is None):
         return DetectedItem(label="GPU", value="Not readable yet — the GPU scheduler didn't answer", ok=False)
     parts = [f"{r.mem_total_gb:.0f} GB unified memory" if r.mem_total_gb else "",
-             f"{r.gpu_util_pct:.0f}% busy" if r.gpu_util_pct is not None else "", r.blerbz_label]
+             f"{r.gpu_util_pct:.0f}% busy" if r.gpu_util_pct is not None else "",
+             r.blerbz_label if r.primary_enabled else ""]
     return DetectedItem(label="GPU", value=" · ".join(p for p in parts if p), ok=True)
 
 

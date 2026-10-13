@@ -63,7 +63,7 @@
           <li>decisions · Jev</li>
           <li>agents · MCP</li>
         </ul>
-        <p class="note"><strong>Status, 2026-10-01.</strong> No LIF model uses the GPU yet. The primary workload keeps it. Today’s local models run on the CPU, and the GPU is leased through gpusched. Details under <a href="#hardware">hardware</a>.</p>
+        <p class="note"><strong>Status, 2026-10-01.</strong> On this reference host, local models run on the CPU. Yielding the GPU to another process is an optional integration (<code>primary_workload.enabled</code>, off unless you turn it on). Without it, Labzilla does not wait on an external scheduler. Details under <a href="#hardware">hardware</a>.</p>
       </div>
 
       <aside class="term" aria-label="Host facts">
@@ -275,7 +275,7 @@
               <tr><td>CPU</td><td>20 ARM cores: 10 Cortex-X925 and 10 Cortex-A725.</td></tr>
               <tr><td>Memory</td><td>128 GB unified LPDDR5X. CPU and GPU share it, and they share one bus.</td></tr>
               <tr><td>Cluster</td><td>Single-node k3s. One replica means no in-cluster redundancy. Backups are the safety net.</td></tr>
-              <tr><td>GPU admission</td><td><code>gpusched</code> is the only authority. LIF is a read-only client. Admissible GPU memory is about 0.6–1.2 GiB, because the primary workload’s residents pin about 107 GB.</td></tr>
+              <tr><td>GPU admission</td><td>Optional. On this host, <code>gpusched</code> is the admission authority and LIF is a read-only client when <code>primary_workload.enabled</code> is true. That host’s other residents pin about 107 GB, so admissible GPU memory is about 0.6–1.2 GiB. A machine without that scheduler runs Labzilla on its own.</td></tr>
               <tr><td>LIF models</td><td>On the CPU, via llama.cpp. Tier 0 is <code>qwen3-4b-instruct-2507-q4km-cpu</code>, about 21 tok/s on the A725 cores (2026-10-01). Optional <code>qwen3-1.7b</code>. Embeddings: <code>qwen3-embedding-0.6b</code>.</td></tr>
               <tr><td>Voice</td><td>Chatterbox TTS on the tailnet leases the GPU through gpusched only while it has work, and falls back to the CPU when it cannot.</td></tr>
               <tr><td>To hack on the repo</td><td>Python ≥ 3.12 (<code>lif/pyproject.toml</code>). <code>tools/setup.sh</code> enables the pre-commit guard, creates the private roots, and builds <code>lif/.venv</code>.</td></tr>

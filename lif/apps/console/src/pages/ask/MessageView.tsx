@@ -121,7 +121,7 @@ function Notes({ r }: { r: Receipt }) {
       title: 'Smaller model than this mode prefers',
       body: r.reason_label ?? 'The model meant for this mode isn’t running, so a smaller one answered.',
     });
-  if (r.clamped) notes.push({ tone: 'info', title: 'Answer length was capped', body: 'The GPU is reserved for BLERBZ right now, so long answers are cut short.' });
+  if (r.clamped) notes.push({ tone: 'info', title: 'Answer length was capped', body: 'Another workload has the GPU right now, so long answers are cut short.' });
   if (!notes.length) return null;
   return (
     <>

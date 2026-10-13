@@ -24,7 +24,7 @@ export const PALETTE_COMMANDS: PaletteCommand[] = [
   { id: 'run-agent', label: 'Run Agent', hint: 'Start Model Scout or the Evaluator', icon: 'agents', kind: 'navigate', href: '/agents?run=1', keywords: 'agent start' },
   { id: 'search-knowledge', label: 'Search Knowledge', hint: 'Decisions, evidence, assumptions', icon: 'knowledge', kind: 'navigate', href: '/knowledge?search=1', keywords: 'why decision find' },
   { id: 'check-models', label: 'Check Models', hint: 'Look for better models on Hugging Face', icon: 'scout', kind: 'navigate', href: '/models/discovery', keywords: 'discovery upgrade hugging face' },
-  { id: 'open-gpu', label: 'Open GPU', hint: 'Compute, memory and what BLERBZ is using', icon: 'gpu', kind: 'navigate', href: '/system/compute', keywords: 'gpu memory blerbz compute dgx' },
+  { id: 'open-gpu', label: 'Open GPU', hint: 'Compute, memory and GPU load', icon: 'gpu', kind: 'navigate', href: '/system/compute', keywords: 'gpu memory compute dgx primary workload' },
   { id: 'pause-batch', label: 'Pause Batch', hint: 'Pause all batch jobs (shows the impact first)', icon: 'pause', kind: 'command', text: 'Pause batch jobs', keywords: 'stop batch jobs' },
   { id: 'open-settings', label: 'Open Settings', hint: 'Maintenance mode and automation', icon: 'settings', kind: 'navigate', href: '/system/settings', keywords: 'settings maintenance automation' },
   { id: 'connect', label: 'Connect a phone', hint: 'Show a QR code to pair a phone or tablet', icon: 'qr', kind: 'navigate', href: '/connect', keywords: 'phone pair qr device' },

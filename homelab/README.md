@@ -208,8 +208,8 @@ kubectl -n longhorn-system port-forward svc/longhorn-frontend 8080:80
 # then open http://localhost:8080
 ```
 
-GPU workloads on this cluster should go through the host GPU scheduler's gate
-(`~/bnn/deploy/k8s/gpusched`). The GPU is popular, and it keeps a strict guest list.
+GPU workloads can go through an external scheduler's gate when you run one. Labzilla does not
+require that scheduler; `primary_workload.enabled` (in `lif/config/lif.yaml`) is off unless you turn it on.
 
 ---
 

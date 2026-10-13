@@ -10,14 +10,14 @@ Everything below runs as user `tiny` without sudo. `kubectl` uses `~/.kube/confi
 | Local registry | `deploy/k8s/base/03-registry.yaml` | hostPort bound to `127.0.0.1:5000`, so it is not reachable from the LAN. K3s pulls `127.0.0.1:5000/...` over HTTP without any registries.yaml change |
 | Seed the pinned Tier 0 weights | `kubectl apply -f deploy/k8s/bootstrap/download-tier0.yaml` | Resumable, sha256-verified, atomic rename; a mismatch is quarantined as `*.bad` |
 | Secrets | `scripts/create-secrets.sh` | See below |
-| gpusched token | `lif:` line appended to `~/.config/bnn/gpusched.token` | **Dormant** until gpusched next restarts (it reads tokens only at startup). LIF currently uses the read-only `metrics` token |
+| gpusched token (optional) | `metrics` line of `~/.config/gpusched.token`, or `LIF_GPUSCHED_TOKEN_FILE` | Only used when `primary_workload.enabled` is true. Absent token: `create-secrets.sh` skips Secret `lif-gpusched` |
 
 ### Secrets
 
 `scripts/create-secrets.sh` is idempotent and never prints values.
 
-- It reads `TYPE_SAFE_JEV_API_KEY` from `labzilla/.env.local` and the `metrics` line from `~/.config/bnn/gpusched.token`.
-- It generates gateway and admin keys once into `labzilla/secrets/lif-{probe,batch,decision,bnn,operator,admin}.key` (mode 0600, git-ignored).
+- It reads `TYPE_SAFE_JEV_API_KEY` from `labzilla/.env.local`. A gpusched metrics token is optional (`LIF_GPUSCHED_TOKEN_FILE`, `~/.config/gpusched.token`, or the legacy `~/.config/bnn/gpusched.token`).
+- It generates gateway and admin keys once into `labzilla/secrets/lif-{probe,batch,decision,workload,operator,admin}.key` (mode 0600, git-ignored). An existing `lif-bnn.key` is kept and still registered as client `bnn`; a new install does not create that file.
 - For the Labzilla Console it also generates `lif-console-admin.key`, `lif-console-gateway.key` (added as `console:` lines to `LIF_ADMIN_KEYS` / `LIF_GATEWAY_KEYS`) and the first-run `lif-console-setup.code`.
 - It applies `ai-system/lif-secrets`:
   - `TYPE_SAFE_JEV_API_KEY`
@@ -57,10 +57,7 @@ for d in controller gateway decision-fabric batch console; do kubectl -n ai-syst
 ### After every apply
 
 1. **Check host headroom.** `tier0-small` and `embedding` have no `replicas:` in their manifests, so an apply leaves the memory guard's count alone. LIF workloads still roll, and `gpu-engine-bridge` restarts, because it uses the same image.
-   ```bash
-   cd ~/bnn/apps/blerbz-news-network && .venv/bin/python -m bnn.gpusched status | sed -n 2,3p
-   ```
-   `available` must stay at or above ~8 GiB, and there must be no `unmanaged` hold.
+   If `primary_workload.enabled` is true, confirm the external scheduler still reports headroom (`available` at or above ~8 GiB, and no `unmanaged` hold). With the integration off, skip that check.
 2. **Smoke test:** `local-ai doctor` (see OPERATIONS.md).
 
 ## 3. What needs the owner

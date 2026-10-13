@@ -1,4 +1,5 @@
-// Home's one status block (§6): health, AI, DGX, BLERBZ, agents, jobs as a single definition list —
+// Home's one status block (§6): health, AI, GPU, memory, agents, jobs as a single definition list —
+// the optional primary-workload row appears only when that integration is turned on.
 // not a card wall (§4). Every value is the server's; unknowns say "Not reported" instead of a fake 0.
 import type { ComponentChildren } from 'preact';
 import type { ResourceState, SystemStatus } from '@/api/contracts.gen';
@@ -50,11 +51,15 @@ function facts(s: SystemStatus): FactItem[] {
       value: mem ? linked('/system/compute', mem) : NOT_REPORTED,
       hint: stale,
     },
-    {
-      label: 'BLERBZ',
-      value: r.blerbz_label ? linked('/system/compute', r.blerbz_label) : NOT_REPORTED,
-      hint: [r.blerbz_reason, stale].filter(Boolean).join(' · ') || undefined,
-    },
+    ...(r.primary_enabled
+      ? [
+          {
+            label: r.primary_name || 'Primary workload',
+            value: r.blerbz_label ? linked('/system/compute', r.blerbz_label) : NOT_REPORTED,
+            hint: [r.blerbz_reason, stale].filter(Boolean).join(' · ') || undefined,
+          },
+        ]
+      : []),
     { label: 'Agents running', value: linked('/agents', fmt.num(s.agents_running)) },
     {
       label: 'Queued jobs',

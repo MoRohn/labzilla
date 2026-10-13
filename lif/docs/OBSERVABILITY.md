@@ -27,7 +27,7 @@ LIF reuses the existing Argo-managed **kube-prometheus-stack** in `monitoring`. 
 | `lif_inflight_requests` | profile | |
 | `lif_throttled_total` | reason (`queued`, `max_tokens_clamped`) | primary-workload yield actions |
 | `lif_available` / `lif_probe_seconds` | capability | **inference-verified** availability (see below) |
-| `lif_blerbz_state` | — | 0 LOW, 1 MODERATE, 2 HIGH, 3 IMMINENT |
+| `lif_blerbz_state` | — | 0 LOW, 1 MODERATE, 2 HIGH, 3 IMMINENT. Series name kept so existing dashboards keep working. It is the optional primary-workload gauge; it stays at 0 while that integration is off |
 | `lif_gpu_admissible_mib` | — | gpusched admissible |
 | `lif_decisions_total` | decision, provider, action | |
 | `lif_decision_seconds`, `lif_decision_confidence` | decision, provider | |

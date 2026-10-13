@@ -392,7 +392,7 @@ def deployment_name(profile: dict[str, Any] | None) -> str | None:
 
 def shed_profiles(routing: dict[str, Any], shed: list[str]) -> set[str]:
     """Profiles whose server the memory guard has scaled to zero. Matched by endpoint host only, so the guard's
-    'embedding' Deployment is never confused with BLERBZ's own GPU embedder (a gpusched resident)."""
+    'embedding' Deployment is never confused with an external GPU embedder (a gpusched resident)."""
     profiles = _d(routing.get("profiles"))
     return {p for p, prof in profiles.items() if deployment_name(prof) in set(shed)}
 
@@ -576,8 +576,17 @@ def _bytes_gb(v: float | None) -> float | None:
 
 def build_resource(gpu: dict[str, Any], prom: dict[str, list[dict[str, Any]]], now: float,
                    gpu_ok: bool) -> ResourceState:
-    """What the DGX is doing. Memory is measured (node exporter) in GiB, not the nominal 128 GB."""
-    state, label, why = hz.blerbz(gpu) if gpu else ("unknown", "Unknown", "GPU scheduler status hasn't been read yet.")
+    """What the machine is doing. Memory is measured (node exporter) in GiB, not the nominal 128 GB.
+
+    The primary-workload row is filled only when that integration is on. Otherwise the
+    scheduler snapshot is not treated as a product that Labzilla must yield to.
+    """
+    from lif.gpu import workload
+    on = workload.enabled()
+    if on:
+        state, label, why = hz.blerbz(gpu) if gpu else ("unknown", "Unknown", "GPU scheduler status hasn't been read yet.")
+    else:
+        state, label, why = "idle", "", ""
     pv = {k: upstream.prom_value(v) for k, v in prom.items() if k not in ("alerts", "waiting", "restarts",
                                                                           "terminated", "deploy_avail", "deploy_spec")}
     total = _bytes_gb(pv.get("mem_total"))
@@ -597,11 +606,16 @@ def build_resource(gpu: dict[str, Any], prom: dict[str, list[dict[str, Any]]], n
         temp = "normal" if t < 70 else "warm" if t < 85 else "hot"
         temp_note = f"Board sensor {t:.0f} °C; no GPU temperature sensor is exported yet."
     age = hz.num(gpu.get("age_sec"))
+    if not on:
+        if blerbz_gb is not None and other is not None:
+            other = round(other + blerbz_gb, 1)
+        blerbz_gb = None
     return ResourceState(
+        primary_enabled=on, primary_name=workload.display_name() if on else "",
         blerbz=state, blerbz_label=label, blerbz_reason=why, gpu_util_pct=hz.num(gpu.get("gpu_util_percent")),
         mem_total_gb=total, mem_used_gb=used, mem_available_gb=avail, blerbz_mem_gb=blerbz_gb,
         ai_serving_mem_gb=lif_gb, other_mem_gb=other, temperature=temp, temperature_note=temp_note,  # type: ignore[arg-type]
-        stale=not gpu_ok or (age is not None and age > hz.GPUSCHED_STALE_SEC),
+        stale=bool(on and (not gpu_ok or (age is not None and age > hz.GPUSCHED_STALE_SEC))),
         updated_at=hz.num(gpu.get("ts")) or (now if gpu_ok else 0.0),
         tech=hz.tech(gpusched_state=gpu.get("state"), gpusched_reason=gpu.get("reason"),
                      p_next_hour=gpu.get("p_next_hour"), admissible_mib=gpu.get("admissible_mib"),
@@ -618,8 +632,9 @@ def build_compute(r: ResourceState, prom_note: str | None) -> ComputeView:
     def pct(gb: float | None) -> float | None:
         return round(gb / total * 100, 1) if gb is not None and total else None
 
-    if r.blerbz_mem_gb is not None:
-        work.append(WorkShare(key="blerbz", label="BLERBZ", gb=r.blerbz_mem_gb, pct=pct(r.blerbz_mem_gb)))
+    if r.primary_enabled and r.blerbz_mem_gb is not None:
+        work.append(WorkShare(key="blerbz", label=r.primary_name or "Primary workload", gb=r.blerbz_mem_gb,
+                              pct=pct(r.blerbz_mem_gb)))
     if r.ai_serving_mem_gb is not None:
         work.append(WorkShare(key="ai_serving", label="AI Serving", gb=r.ai_serving_mem_gb, pct=pct(r.ai_serving_mem_gb)))
     if r.other_mem_gb is not None:
@@ -743,8 +758,12 @@ def build_services(src: dict[str, _Src], ov: dict[str, Any], gpu: dict[str, Any]
         add("batch", "healthy", f"{int(hz.num(b.get('running')) or 0):,} items running, "
                                 f"{int(hz.num(b.get('pending')) or 0):,} waiting",
             raw=hz.tech(blerbz=_d(b.get("blerbz")).get("state")))
-    # GPU scheduler (through the controller)
-    if gpu:
+    # GPU scheduler (through the controller). Hidden unless the primary-workload integration is on,
+    # so a machine without that scheduler is not reported as a failed dependency.
+    from lif.gpu import workload as _workload
+    if not _workload.enabled():
+        pass
+    elif gpu:
         st = hz.blerbz(gpu)[0]
         if st == "unknown":
             add("gpusched", "attention", "Not reporting; background work is held to be safe",
@@ -780,7 +799,8 @@ def build_services(src: dict[str, _Src], ov: dict[str, Any], gpu: dict[str, Any]
         raw = hz.tech(profile=pid, deployment=dep, last_error=lp.get("last_error"))
         kube = ("ai-serving", dep) if dep else None
         if pid in sp:
-            hs: tuple[Health, str] = ("paused", "Paused to free memory for BLERBZ")
+            hs: tuple[Health, str] = ("paused", f"Paused to free memory for {hz._wl_name()}" if hz._wl_on()
+                                      else "Paused to free memory")
             impact = "Its roles use a backup model until memory recovers; it restarts automatically."
         elif not lp:
             hs, impact = ("unknown", "Unknown (no live status)" if live else
@@ -991,11 +1011,13 @@ def _notify(now: float, roles: list[ModelRole], r: ResourceState, mem_avail_mib:
                 "Agents asked for a person's check. Nothing is blocked while they wait.", "/agents", now)
     b = _d(ov.get("batch"))
     held = int(hz.num(b.get("pending")) or 0)
-    contention = r.blerbz == "busy" and bool(gpu.get("production_live")) and (held > 0 or bool(shed) or any(
+    from lif.gpu import workload as _workload
+    name = r.primary_name or _workload.display_name()
+    contention = r.primary_enabled and r.blerbz == "busy" and bool(gpu.get("production_live")) and (held > 0 or bool(shed) or any(
         x.cause == "yielded_to_primary" for x in roles))
-    n.condition("blerbz", contention, "blerbz_contention", "info", "BLERBZ is using the GPU",
+    n.condition("blerbz", contention, "blerbz_contention", "info", f"{name} is using the GPU",
                 (f"{held} batch job item{'s' if held != 1 else ''} waiting; " if held else "")
-                + "local AI is slower and work resumes automatically when BLERBZ finishes.", "/system/compute", now)
+                + f"local AI is slower and work resumes automatically when {name} finishes.", "/system/compute", now)
     # events from activity rows that arrived since the last build
     for row in _st.new_rows:
         kind, d = row.get("kind"), _d(row.get("detail"))

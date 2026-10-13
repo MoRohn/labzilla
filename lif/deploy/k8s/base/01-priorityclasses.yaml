@@ -1,10 +1,11 @@
 # Pod priorities for CPU/RAM contention inside K3s. They do NOT arbitrate the GPU:
 # GB10 unified memory is not visible to the kubelet, so gpusched remains the GPU
 # authority (primary-workload production = gpusched class "production", never blocked).
-# blerbz-critical is reserved for any primary-workload service that later moves into K3s.
+# workload-critical is reserved for an optional external workload that later moves into K3s.
+# Clusters that already applied the old name `blerbz-critical` can leave that object; nothing selects it.
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
-metadata: {name: blerbz-critical}
+metadata: {name: workload-critical}
 value: 900000
 preemptionPolicy: PreemptLowerPriority
 description: Primary-workload production jobs (P0/P1).

@@ -1,4 +1,4 @@
-// Workload timeline (§37): "08:00 inference / 09:00 idle / 10:00 BLERBZ video" as an hourly row list
+// Workload timeline (§37): "08:00 inference / 09:00 idle / 10:00 GPU" as an hourly row list
 // with a tiny inline SVG strip per hour — no chart library (§56, §93). Its own lazy chunk.
 import { get, qs } from '@/api/client';
 import type { TimelineBucket, TimelineResponse } from '@/api/contracts.gen';
@@ -9,20 +9,20 @@ const HOURS = 12;
 
 /** Two stacked shares of the hour, 0..100 each; the text beside it carries the same numbers. */
 function Strip({ b }: { b: TimelineBucket }) {
-  const blerbz = Math.max(0, Math.min(100, b.blerbz_pct ?? 0));
-  const ai = Math.max(0, Math.min(100 - blerbz, b.ai_pct ?? 0));
+  const external = Math.max(0, Math.min(100, b.blerbz_pct ?? 0));
+  const ai = Math.max(0, Math.min(100 - external, b.ai_pct ?? 0));
   return (
     <svg class="lz-sys-strip" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false">
       <rect x="0" y="0" width="100" height="8" rx="2" class="lz-sys-strip-bg" />
-      {blerbz > 0 && <rect x="0" y="0" width={blerbz} height="8" class="lz-sys-strip-blerbz" />}
-      {ai > 0 && <rect x={blerbz} y="0" width={ai} height="8" class="lz-sys-strip-ai" />}
+      {external > 0 && <rect x="0" y="0" width={external} height="8" class="lz-sys-strip-primary" />}
+      {ai > 0 && <rect x={external} y="0" width={ai} height="8" class="lz-sys-strip-ai" />}
     </svg>
   );
 }
 
-function shares(b: TimelineBucket): string {
+function shares(b: TimelineBucket, name: string): string {
   const parts: string[] = [];
-  if (b.blerbz_pct != null) parts.push(`BLERBZ ${fmt.percent(b.blerbz_pct, { fromPct: true })}`);
+  if (b.blerbz_pct != null) parts.push(`${name} ${fmt.percent(b.blerbz_pct, { fromPct: true })}`);
   if (b.ai_pct != null) parts.push(`AI ${fmt.percent(b.ai_pct, { fromPct: true })}`);
   if (b.batch_items) parts.push(`${fmt.num(b.batch_items)} batch items`);
   return parts.join(' · ');
@@ -34,7 +34,8 @@ export function WorkloadTimeline() {
   });
   if (tl.loading) return <Skeleton lines={4} />;
   if (!tl.data) return tl.error ? <HumanErrorCard error={tl.error} onRetry={() => void tl.refresh()} compact /> : null;
-  const { buckets, available, reason } = tl.data;
+  const { buckets, available, reason, primary_enabled: on, primary_name: pname } = tl.data;
+  const shareName = on && pname ? pname : 'GPU';
   if (!available || !buckets.length)
     return (
       <EmptyState
@@ -54,7 +55,7 @@ export function WorkloadTimeline() {
           </time>
           <span class="lz-sys-timeline-label">{b.label}</span>
           <Strip b={b} />
-          <span class="muted small num">{shares(b)}</span>
+          <span class="muted small num">{shares(b, shareName)}</span>
         </li>
       ))}
     </ol>

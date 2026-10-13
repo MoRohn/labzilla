@@ -14,7 +14,7 @@ Gateway contract (lif/gateway/app.py): X-LIF-* headers arrive with the stream; t
 `usage` also carries `lif` (alias, served_by, model, fallback, degraded, reason, route_decision). An
 upstream 4xx comes back as HTTP 200 whose lines are raw JSON errors; a mid-stream failure is a
 `data: {"error": …}` line with no [DONE]. A 429 of type capacity means the request waited 120 s for a
-slot while BLERBZ had the GPU.
+slot while an external workload had the GPU.
 
 This module talks to the gateway with its own small httpx client (`_client`) because the shared
 upstream.stream() helper yields lines only: Ask needs the response's X-LIF-* headers for the route, and the
@@ -437,9 +437,11 @@ def gateway_error(status: int, raw: bytes | str, alias: str, *, images: bool = F
     tech = {"status": status, "type": typ, "message": msg, "alias": alias}
     if status == 429 and typ == "capacity":
         primary = "primary-workload" in low
-        cause = ("BLERBZ is using the GPU, so local AI answers one request at a time"
+        from lif.gpu import workload
+        who = workload.display_name()
+        cause = (f"{who} is using the GPU, so local AI answers one request at a time"
                  if primary else "Every local model slot stayed busy")
-        return _err("Waiting for the primary workload to finish" if primary else "Local AI is busy",
+        return _err(f"Waiting for {who} to finish" if primary else "Local AI is busy",
                     f"{cause}, and your request waited 2 minutes without getting a turn. Nothing was lost.",
                     "Retry in a minute — Labzilla gives capacity back to local AI automatically.",
                     [("Retry", "retry")], **tech)
@@ -643,8 +645,11 @@ def _flush(run: _Run, force: bool = False) -> None:
 
 
 def _gpu_imminent() -> bool:
-    """Is the gateway clamping answers right now? It caps max_tokens at 512 only while gpusched says IMMINENT
-    (production running, residents reloading, or gpusched not visible) and never reports it per response."""
+    """Is the gateway clamping answers right now? Only when the primary-workload integration is on
+    and the scheduler says IMMINENT. Off by default, so a missing scheduler does not shorten answers."""
+    from lif.gpu import workload
+    if not workload.enabled():
+        return False
     raw = poller.snapshot().raw
     gpu = raw.get("gpu") if isinstance(raw.get("gpu"), dict) else {}
     health = raw.get("health") if isinstance(raw.get("health"), dict) else {}
