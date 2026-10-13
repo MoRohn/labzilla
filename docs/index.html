@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Labzilla — one machine, one cluster, one very large lizard</title>
+  <meta name="description" content="Labzilla is the private AI platform and k3s homelab on tiny-dgx, a single NVIDIA DGX Spark. Local models, request routing, measured-confidence decisions, a knowledge layer, and a cockpit console.">
+  <meta name="theme-color" content="#07110f">
+  <meta property="og:title" content="Labzilla — one machine, one cluster, one very large lizard">
+  <meta property="og:description" content="Private AI on one DGX Spark: local models, routing, Jev decisions, a knowledge layer, and the Labzilla Console. k3s, GitOps, one very large lizard.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://morohn.github.io/labzilla/">
+  <meta property="og:image" content="https://morohn.github.io/labzilla/img/social.png">
+  <link rel="icon" href="img/mark.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="#content">
+        <img src="img/mark.png" width="256" height="256" alt="">
+        labzilla
+      </a>
+      <nav class="nav" aria-label="Page">
+        <a href="#what">What</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#hardware">Hardware</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="#docs">Docs</a>
+        <a class="nav-github" href="https://github.com/MoRohn/labzilla">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <div class="wrap hero">
+      <div>
+        <img class="logo-word" src="img/logo-dark.png" width="800" height="800" alt="labzilla: a green kaiju in safety goggles holding a bubbling flask, beside a stack of cubes, above the wordmark labzilla">
+        <p class="kicker">Private AI · one DGX Spark · 🦖</p>
+        <h1>One machine.<br>One cluster.<span class="line-lizard">One very large lizard.</span></h1>
+        <p class="lede">The infrastructure and private AI platform behind <code>tiny-dgx</code>, a DGX Spark (GB10, arm64, 128&nbsp;GB unified memory). Local models, routing to the right one, decisions that escalate on measured confidence, a knowledge layer, and a cockpit console you can pair to a phone. The cluster is single-node k3s. GitOps is Argo&nbsp;CD.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/MoRohn/labzilla">View on GitHub</a>
+          <a class="btn btn-ghost" href="#quickstart">Quickstart</a>
+        </div>
+        <ul class="pills">
+          <li>k3s · single node</li>
+          <li>GitOps · Argo CD</li>
+          <li>Python ≥ 3.12</li>
+          <li>arm64</li>
+          <li>decisions · Jev</li>
+          <li>agents · MCP</li>
+        </ul>
+        <p class="note"><strong>Status, 2026-10-01.</strong> No LIF model uses the GPU yet. The primary workload keeps it. Today’s local models run on the CPU, and the GPU is leased through gpusched. Details under <a href="#hardware">hardware</a>.</p>
+      </div>
+
+      <aside class="term" aria-label="Host facts">
+        <div class="term-bar">
+          <span>labzilla@tiny-dgx</span>
+          <span class="live">● local</span>
+        </div>
+        <div class="term-body">
+          <table>
+            <tbody>
+              <tr><th scope="row">host</th><td>tiny-dgx</td></tr>
+              <tr><th scope="row">board</th><td>DGX Spark · GB10 · arm64</td></tr>
+              <tr><th scope="row">memory</th><td>128 GB unified</td></tr>
+              <tr><th scope="row">cluster</th><td>k3s · one node</td></tr>
+              <tr><th scope="row">gitops</th><td>Argo CD</td></tr>
+              <tr><th scope="row">gateway</th><td>OpenAI-compatible</td></tr>
+              <tr><th scope="row">models</th><td>CPU llama.cpp today</td></tr>
+              <tr><th scope="row">gpu</th><td>gpusched, read-only</td></tr>
+            </tbody>
+          </table>
+          <hr class="term-rule">
+          <div><span class="prompt">$</span> cascade</div>
+          <div>code → jev → local model</div>
+          <div>→ kimi k3 <span class="amber">(opt-in)</span></div>
+          <div>→ human / safe default<span class="cursor" aria-hidden="true"></span></div>
+        </div>
+      </aside>
+    </div>
+
+    <section id="what">
+      <div class="wrap">
+        <div class="section-h">
+          <span class="idx">01</span>
+          <h2>What it is</h2>
+        </div>
+        <p class="sub">Two projects share one host, one cluster, and one set of local credentials. The console at <code>https://labzilla.local</code> is the everyday door — on the home network, not on the public internet.</p>
+        <div class="split">
+          <article class="panel">
+            <span class="path">homelab/</span>
+            <h3>The k3s platform</h3>
+            <p>Longhorn storage, MinIO backups on- and off-site, Prometheus and Grafana, MetalLB, and Tailscale. All of it is GitOps-managed by Argo CD. A push to <code>main</code> that touches the platform paths syncs within about three minutes.</p>
+          </article>
+          <article class="panel">
+            <span class="path">lif/</span>
+            <h3>Local Intelligence Fabric</h3>
+            <p>An OpenAI-compatible gateway over local models, Decision Engineering (typed Jev decisions with calibrated escalation), a persistent knowledge layer, model lifecycle, a batch queue, and the Labzilla Console for web and phone. It runs on the platform.</p>
+          </article>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <span class="path">lif/gateway</span>
+            <h3>One gateway</h3>
+            <p>Applications call a single OpenAI-compatible endpoint and ask for logical models such as <code>local/default</code> or <code>local/auto</code>, never for a Hugging Face id. Every response says what served it. The gateway yields when the primary workload needs the machine.</p>
+          </article>
+          <article class="card">
+            <span class="path">lif/routing</span>
+            <h3>Route to a model</h3>
+            <p>An alias walks the first healthy profile in its chain. Fallback is recorded, not hidden. <code>local/auto</code> checks whether the question needs live data, then picks the smallest tier that fits.</p>
+          </article>
+          <article class="card">
+            <span class="path">lif/decision</span>
+            <h3>Decide, then generate</h3>
+            <p>The rule is: don’t generate when you only need to decide. Traces are mined for decisions hiding in LLM calls, turned into versioned Jev questions, linted, tested, shadowed, calibrated per decision, and promoted only by a person. Below the threshold, the step escalates.</p>
+          </article>
+          <article class="card">
+            <span class="path">lif/knowledge</span>
+            <h3>Knowledge, with provenance</h3>
+            <p>Typed Markdown repos of decisions, evidence, incidents, and methods. A graph assembles context. An MCP server (<code>lif-knowledge</code>) lets agents resume work and keep the provenance.</p>
+          </article>
+          <article class="card">
+            <span class="path">apps/console</span>
+            <h3>Cockpit, and a phone</h3>
+            <p>Home answers whether Labzilla is healthy, how fast and available local AI is, what the DGX is doing, and what happened. Ask streams a reply with a receipt: model, device, time, and route. Pair a phone from the sidebar: scan the QR, check that both screens show the same 6-digit code, then approve. <em>Add to Home Screen</em> installs it as an app.</p>
+          </article>
+          <article class="card">
+            <span class="path">lif/understanding</span>
+            <h3>Explain it once</h3>
+            <p>The Understanding Compiler turns “help me understand” into one canonical explanation, then picks the cheapest representation that carries it: a summary, a causal diagram, a table, or an interactive simulation. Renderers cannot add facts.</p>
+          </article>
+          <article class="card">
+            <span class="path">lif/models</span>
+            <h3>Model lifecycle</h3>
+            <p>Hugging Face discovery, then benchmark, canary, promotion, and rollback. The Control Center is the expert view: models, calibration, cascades, traces, and the review queue.</p>
+          </article>
+          <article class="card">
+            <span class="path">lif/batch</span>
+            <h3>Batch, when it can wait</h3>
+            <p>A durable SQLite queue for work that should yield to the primary workload. If the batch service is down, <code>/v1/batch</code> returns 503 and items resume from their checkpoint.</p>
+          </article>
+        </div>
+
+        <ul class="stats">
+          <li><span class="stat">94.4%</span><span class="stat-l">Jev was right</span></li>
+          <li><span class="stat">167 ms</span><span class="stat-l">median latency</span></li>
+          <li><span class="stat">181 / 267</span><span class="stat-l">auto at 0.9, all correct</span></li>
+        </ul>
+        <p class="fine">Measured 2026-10-01 on 267 labelled agent decisions (10 decisions). At a 0.9 threshold, 68% resolved automatically and those automatic answers were all correct. The labels are synthetic and not yet reviewed by a person. Kimi K3 was not configured for that run. <a href="https://github.com/MoRohn/labzilla/blob/main/lif/benchmarks/decision-engineering/README.md">Benchmark write-up</a>.</p>
+
+        <figure class="shot">
+          <img src="img/console-home.png" width="2880" height="2300" alt="Labzilla Console Home: a Labzilla is healthy status block, then eight tiles for the last 24 hours (answers, answer speed, first word, availability, free memory, GPU load, AI requests, estimated value) with six-hour trend lines, recent conversations, service health and recent activity" loading="lazy">
+          <figcaption><strong>Home</strong>, the cockpit: is it healthy, how fast and available is local AI, what the DGX is doing, and what happened. Every tile drills down. Demo data from the console’s test harness (<code>lif/apps/console/e2e/readme_shots.mjs</code>), not from a live system.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="wrap">
+        <div class="section-h">
+          <span class="idx">02</span>
+          <h2>Architecture</h2>
+        </div>
+        <p class="sub">Services, as drawn in <a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/ARCHITECTURE.md">lif/docs/ARCHITECTURE.md</a>. Gateway, controller, decision-fabric, and batch run from one image; the Deployment picks the module. Model servers are llama.cpp.</p>
+        <p class="rule">Don’t generate when you only need to decide.</p>
+        <p class="sub">An agent step tries the cheapest executor that can do it correctly. The platform keeps measuring whether that is still true.</p>
+        <ol class="cascade">
+          <li>
+            <span class="step">01</span>
+            <strong>Code</strong>
+            <p>Exact results.</p>
+          </li>
+          <li>
+            <span class="step">02</span>
+            <strong>Jev</strong>
+            <p>Bounded judgment, when confidence clears that decision’s calibrated threshold.</p>
+          </li>
+          <li>
+            <span class="step">03</span>
+            <strong>Local model</strong>
+            <p>Generation, or cases the judgment still finds uncertain.</p>
+          </li>
+          <li>
+            <span class="step">04</span>
+            <strong>Kimi K3</strong>
+            <p>Hard cases, opt-in. In the cascade, and left disabled unless turned on.</p>
+          </li>
+          <li>
+            <span class="step">05</span>
+            <strong>Human</strong>
+            <p>Irreversible or still unresolved, or a safe default.</p>
+          </li>
+        </ol>
+        <h3 class="path-title">Request path</h3>
+        <div class="arch">
+          <ol class="pipe">
+            <li>
+              <span class="path">LAN</span>
+              <strong>ai.tiny-dgx.lan</strong>
+              <p>Traefik on websecure. Inside the cluster the gateway is <code>http://gateway.ai-system.svc:8080</code>.</p>
+            </li>
+            <li>
+              <span class="path">Data plane · ai-system</span>
+              <strong>gateway ×2</strong>
+              <p>Auth, rate limit, privacy, route, yield to the primary workload, fallback, and a deterministic cache for non-streaming <code>temperature: 0</code>.</p>
+            </li>
+            <li>
+              <span class="path">ai-serving · CPU</span>
+              <strong>tier0 · tier0-small · embedding</strong>
+              <p>Qwen3-4B, an optional 1.7B the memory guard can shed, and 1024-dim embeddings. If one fails, the router walks the alias chain and says so.</p>
+            </li>
+            <li>
+              <span class="path">Control plane</span>
+              <strong>controller · decision-fabric · batch</strong>
+              <p>Registry and lifecycle, hosted Jev (<code>jev-1.13.0</code>) plus rule fallbacks, and the batch queue. Longhorn holds their SQLite volumes.</p>
+            </li>
+            <li>
+              <span class="path">Host</span>
+              <strong>gpusched · k3s · Argo CD</strong>
+              <p>gpusched is the only GPU admission authority. LIF reads it. Argo CD syncs the homelab paths from <code>main</code>. LIF itself is applied by hand.</p>
+            </li>
+          </ol>
+        </div>
+
+        <div class="table-scroll">
+          <table class="data">
+            <caption>Logical models, as of 2026-10-01</caption>
+            <thead>
+              <tr><th scope="col">Alias</th><th scope="col">Served by</th><th scope="col">Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>local/instant</td><td>1.7B, else 4B</td><td>Falls back to 4B while the memory guard has shed the 1.7B.</td></tr>
+              <tr><td>local/fast, local/default, local/batch</td><td>4B, else 1.7B</td><td><code>local/default</code> is the usual ask.</td></tr>
+              <tr><td>local/reasoning, local/code</td><td>4B</td><td>Marked <code>degraded: true</code>. Below the alias size floor (30B / 14B).</td></tr>
+              <tr><td>local/embedding</td><td>Qwen3-Embedding-0.6B</td><td>1024 dimensions.</td></tr>
+              <tr><td>local/vision, local/rerank</td><td>none</td><td>Returns 503 with the reason.</td></tr>
+              <tr><td>local/web</td><td>none yet</td><td>Falls through to <code>local/default</code>.</td></tr>
+              <tr><td>local/auto</td><td>route</td><td>Live-data check, then the smallest tier that fits.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="hardware">
+      <div class="wrap">
+        <div class="section-h">
+          <span class="idx">03</span>
+          <h2>Hardware and requirements</h2>
+        </div>
+        <p class="sub">One node. Memory is shared between the CPU and the GPU, so every workload gets requests and limits. This is the machine the repo is written for, not a general installer matrix.</p>
+        <div class="table-scroll">
+          <table class="data">
+            <caption>The host</caption>
+            <thead>
+              <tr><th scope="col">Piece</th><th scope="col">What the repo says</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Machine</td><td><code>tiny-dgx</code>, an NVIDIA DGX Spark. GB10, one GPU, arm64.</td></tr>
+              <tr><td>CPU</td><td>20 ARM cores: 10 Cortex-X925 and 10 Cortex-A725.</td></tr>
+              <tr><td>Memory</td><td>128 GB unified LPDDR5X. CPU and GPU share it, and they share one bus.</td></tr>
+              <tr><td>Cluster</td><td>Single-node k3s. One replica means no in-cluster redundancy. Backups are the safety net.</td></tr>
+              <tr><td>GPU admission</td><td><code>gpusched</code> is the only authority. LIF is a read-only client. Admissible GPU memory is about 0.6–1.2 GiB, because the primary workload’s residents pin about 107 GB.</td></tr>
+              <tr><td>LIF models</td><td>On the CPU, via llama.cpp. Tier 0 is <code>qwen3-4b-instruct-2507-q4km-cpu</code>, about 21 tok/s on the A725 cores (2026-10-01). Optional <code>qwen3-1.7b</code>. Embeddings: <code>qwen3-embedding-0.6b</code>.</td></tr>
+              <tr><td>Voice</td><td>Chatterbox TTS on the tailnet leases the GPU through gpusched only while it has work, and falls back to the CPU when it cannot.</td></tr>
+              <tr><td>To hack on the repo</td><td>Python ≥ 3.12 (<code>lif/pyproject.toml</code>). <code>tools/setup.sh</code> enables the pre-commit guard, creates the private roots, and builds <code>lif/.venv</code>.</td></tr>
+              <tr><td>To open the console</td><td><code>tools/labzilla</code> from Linux or macOS: doctor, status, trust the LAN certificate, open <code>https://labzilla.local</code>. Phones use <em>Trust this device</em> in the console.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <p>Only <code>PUBLIC</code> data is ever sent to Jev. The default data class is <code>CONFIDENTIAL</code>. Prompts stay on the console unless someone marks one “Allow Jev routing”.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart">
+      <div class="wrap">
+        <div class="section-h">
+          <span class="idx">04</span>
+          <h2>Quickstart</h2>
+        </div>
+        <p class="sub">From the root README. <code>tools/setup.sh</code> is safe to re-run. It does not deploy the cluster — platform setup is <a href="https://github.com/MoRohn/labzilla/blob/main/homelab/README.md#the-setup-in-seven-acts">seven acts in homelab/README.md</a>, and LIF deploy steps are in <a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/DEPLOYMENT.md">DEPLOYMENT.md</a>.</p>
+        <figure class="codeblock">
+          <figcaption>bash · clone and local setup</figcaption>
+          <pre><code>git clone git@github.com:MoRohn/labzilla.git ~/labzilla &amp;&amp; cd ~/labzilla
+tools/setup.sh            # pre-commit guard, private roots, lif/.venv</code></pre>
+        </figure>
+        <figure class="codeblock">
+          <figcaption>bash · open a running Labzilla, from Linux or macOS</figcaption>
+          <pre><code>tools/labzilla          # doctor → status → trust (if needed) → open the console</code></pre>
+        </figure>
+        <ol class="steps">
+          <li><div><code>labzilla</code> checks this machine, checks Labzilla, installs its certificate after verifying the fingerprint, and opens the console. <code>tools/setup.sh</code> puts the command on your PATH.</div></li>
+          <li><div>Trust the LAN certificate once per device, then open <code>https://labzilla.local</code> (also <code>https://labzilla.tiny-dgx.lan</code>). The CA only covers those names.</div></li>
+          <li><div>First run is <em>Setup</em> on the host: enter the setup code, then a name and a passphrase of at least 10 characters.</div></li>
+          <li><div>Connect a phone from the sidebar (or <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>). The QR and the matching 6-digit code are the pairing. Remove phones under Connect → Devices.</div></li>
+        </ol>
+        <p class="fine">Device-by-device certificate steps, the hosts-file fallback, and what still works before the CA is trusted: <a href="https://github.com/MoRohn/labzilla/blob/main/README.md#use-labzilla-the-console">Use Labzilla in the README</a>.</p>
+      </div>
+    </section>
+
+    <section id="docs">
+      <div class="wrap">
+        <div class="section-h">
+          <span class="idx">05</span>
+          <h2>Docs and the repo</h2>
+        </div>
+        <p class="sub">The repository is public. Credentials, production measurements, and personal notes stay in git-ignored <code>secrets/</code>, <code>private/</code>, and <code>personal/</code>. A pre-commit guard refuses to commit them.</p>
+        <div class="doc-grid">
+          <div>
+            <h3>Start</h3>
+            <ul>
+              <li><a href="https://github.com/MoRohn/labzilla">Repository</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/README.md">Root README</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/homelab/README.md">homelab</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/README.md">LIF</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/CLAUDE.md">Rules for agents</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Use and operate</h3>
+            <ul>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/CONSOLE.md">Console</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/OPERATIONS.md">Operations</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/DEPLOYMENT.md">Deployment</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/OBSERVABILITY.md">Observability</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/TROUBLESHOOTING.md">Troubleshooting</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/DISASTER_RECOVERY.md">Disaster recovery</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>How it works</h3>
+            <ul>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/ARCHITECTURE.md">Architecture</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/MODEL_ROUTING.md">Model routing</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/GPU_SCHEDULING.md">GPU scheduling</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/DECISION_ENGINEERING.md">Decision engineering</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/UNDERSTANDING.md">Understanding compiler</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/KNOWLEDGE.md">Knowledge layer</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/docs/MODEL_LIFECYCLE.md">Model lifecycle</a></li>
+              <li><a href="https://github.com/MoRohn/labzilla/blob/main/lif/benchmarks/decision-engineering/README.md">Decision benchmark</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <img src="img/mark.png" width="256" height="256" alt="">
+    <p>Stomping on single points of failure since 2026. (Except the one node. We don’t talk about the one node.)</p>
+  </footer>
+</body>
+</html>
