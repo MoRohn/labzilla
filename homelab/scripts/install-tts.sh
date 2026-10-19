@@ -4,6 +4,8 @@
 #   install-tts.sh --local   kubectl apply the working tree instead (testing before a push)
 # Creates ../secrets/tts.env (git-ignored) with fresh tokens on first run; never prints them.
 set -euo pipefail
+echo "install-tts.sh: the TTS service is deprecated (docs/tts.md); not installing." >&2
+exit 1
 cd "$(dirname "$0")/.."
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }

@@ -1,5 +1,8 @@
 # TTS: Chatterbox Turbo over the tailnet
 
+> **Deprecated 2026-10-19.** The service is shut down: namespace `tts`, its tailnet ingress and the
+> weights volume are deleted. `scripts/install-tts.sh` refuses to run. The code stays for reference.
+
 `https://tts.<tailnet>.ts.net` serves [ResembleAI/chatterbox-turbo](https://huggingface.co/ResembleAI/chatterbox-turbo)
 (MIT, revision `749d1c1a`) to any device on the tailnet that has the API token. The GPU belongs to the
 primary workload, so the GPU is leased through gpusched only while there is work, and interactive

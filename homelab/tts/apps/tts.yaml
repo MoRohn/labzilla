@@ -1,3 +1,4 @@
+# DEPRECATED 2026-10-19: do not apply. See homelab/docs/tts.md.
 # Applied by scripts/install-tts.sh once the secrets exist. Managed by Argo CD from git after that.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

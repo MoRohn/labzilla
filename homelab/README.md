@@ -50,7 +50,7 @@ The node remains standing. Details below, for those who prefer facts to folklore
 | `argocd/` | Argo CD app-of-apps (`argocd/root.yaml` → `homelab/argocd/apps`). Push to `main` and the cluster follows |
 | `monitoring/` | Prometheus + Grafana values, scrape configs, alert rules, dashboards |
 | `networking/` | MetalLB address pools and the Tailscale operator |
-| `tts/` | Chatterbox TTS: image, API and GPU worker (leased through gpusched), on the tailnet. [docs/tts.md](docs/tts.md) |
+| `tts/` | **Deprecated, not deployed.** Chatterbox TTS: image, API and GPU worker. [docs/tts.md](docs/tts.md) |
 | `backup/` | Off-site copy of Longhorn backups (rclone over SFTP, hourly timer) |
 | `scripts/` | Every setup step, repeatable on demand |
 | `docs/` | Reference docs, plus the poster above |
@@ -172,7 +172,6 @@ metadata:
 
 **Tailscale** puts Grafana and Prometheus on your private tailnet with real HTTPS, reachable
 from your phone anywhere and from nowhere else. Setup: [docs/tailscale.md](docs/tailscale.md).
-The same tailnet serves text-to-speech at `https://tts.<tailnet>.ts.net` ([docs/tts.md](docs/tts.md)).
 
 ## The spare key (off-site backups)
 
